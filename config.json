@@ -1,0 +1,30 @@
+{
+  "camera": {
+    "index": 0,
+    "width": 640,
+    "height": 480,
+    "fps": 30
+  },
+  "tracking": {
+    "show_preview": true,
+    "show_joint_angles": true,
+    "active_zone_margin_x": 0.15,
+    "active_zone_margin_y": 0.15
+  },
+  "smoothing": {
+    "min_cutoff": 0.5,
+    "beta": 0.1
+  },
+  "gestures": {
+    "hold_frames": 5,
+    "cooldown_frames": 15,
+    "pinch_threshold_press": 0.20,
+    "pinch_threshold_release": 0.25,
+    "toggle_hold_seconds": 2.0
+  },
+  "apps": {},
+  "scroll": {
+    "invert_direction": true,
+    "speed_multiplier": 1.5
+  }
+}
