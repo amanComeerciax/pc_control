@@ -1,10 +1,4 @@
-main.py
 requirements.txt
-core/
-actions/
-ui/
-tests/
-config.json
 hand_landmarker.task
 .pytest_cache/
 venv/
