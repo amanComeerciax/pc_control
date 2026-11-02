@@ -238,3 +238,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Vercel entrypoint fallback (if inspected by Vercel serverless runtime)
+def handler(request=None, response=None):
+    return {"status": 200, "message": "NeuroRehab Web Active"}
+
+app = handler
+application = handler
