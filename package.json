@@ -1,0 +1,8 @@
+{
+  "name": "pc-control-hand-rehab",
+  "version": "1.0.0",
+  "description": "Smart Hand Rehabilitation & 3D ROM Tracking Dashboard for Stroke and Paralysis Patients",
+  "scripts": {
+    "build": "echo 'Static build ready'"
+  }
+}

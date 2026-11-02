@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroRehab - 3D Hand ROM & Goniometer Tracker</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- MediaPipe Hands & Camera Utils -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      --bg: #0b0d14;
+      --card-bg: #141724;
+      --card-border: #23273c;
+      --accent-green: #10b981;
+      --accent-cyan: #06b6d4;
+      --accent-gold: #f59e0b;
+      --accent-orange: #f97316;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation */
+    header {
+      background: rgba(20, 23, 36, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 14px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #10b981, #06b6d4);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 20px;
+      color: #0b0d14;
+    }
+
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .brand-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .badge-view {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.3s ease;
+      background: rgba(6, 182, 212, 0.15);
+      border: 1px solid var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .badge-view.lateral {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: var(--accent-green);
+      color: var(--accent-green);
+    }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 10px currentColor;
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      padding: 24px;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 24px;
+    }
+
+    @media (max-width: 1100px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Video & Canvas Viewport */
+    .viewport-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .viewport-header {
+      padding: 14px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(11, 13, 20, 0.4);
+    }
+
+    .viewport-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .viewport-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    select, button {
+      background: #1b1f32;
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    select:hover, button:hover {
+      border-color: #3b4263;
+      background: #242944;
+    }
+
+    button.btn-primary {
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: none;
+      color: #0b0d14;
+      font-weight: 700;
+    }
+
+    button.btn-primary:hover {
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+    }
+
+    .canvas-container {
+      position: relative;
+      flex: 1;
+      min-height: 480px;
+      background: #06070a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    video {
+      display: none;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      transform: scaleX(-1); /* Mirror camera for natural feel */
+    }
+
+    /* Floating Status Overlay on Video */
+    .viewport-overlay {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(11, 13, 20, 0.82);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    /* Telemetry Sidebar */
+    .telemetry-card {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .panel-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Joint Angle Rows */
+    .joint-row {
+      margin-bottom: 14px;
+    }
+
+    .joint-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+
+    .joint-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+
+    .joint-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--accent-green);
+    }
+
+    .joint-status {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.05);
+      margin-left: 8px;
+    }
+
+    /* Range Progress Bar */
+    .bar-bg {
+      height: 8px;
+      background: #1e2235;
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: var(--accent-green);
+      border-radius: 4px;
+      width: 100%;
+      transition: width 0.1s ease, background 0.2s ease;
+    }
+
+    /* Recovery Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .stat-box {
+      background: #1a1e30;
+      border: 1px solid #282e49;
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--accent-cyan);
+    }
+
+    /* Session Challenge Banner */
+    .challenge-banner {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.12));
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 10px;
+      padding: 14px;
+      margin-top: 10px;
+    }
+
+    .challenge-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--accent-green);
+      margin-bottom: 4px;
+    }
+
+    .challenge-desc {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">NR</div>
+      <div>
+        <div class="brand-title">NeuroRehab Telemetry</div>
+        <div class="brand-subtitle">Smart Box 3D Joint Range of Motion System</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="badge-view" id="viewBadge">
+        <span class="pulse-dot"></span>
+        <span id="viewText">Front View</span>
+      </div>
+      <button class="btn-primary" id="toggleCamBtn">Start Camera</button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Left: Live Video & Canvas Overlay -->
+    <div class="viewport-card">
+      <div class="viewport-header">
+        <div class="viewport-title">
+          <span>Camera Feed: Box View</span>
+        </div>
+        <div class="viewport-controls">
+          <select id="cameraSelect">
+            <option value="">Default Camera</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="canvas-container">
+        <video id="videoElement" playsinline autoplay></video>
+        <canvas id="outputCanvas" width="1280" height="720"></canvas>
+        
+        <div class="viewport-overlay" id="trackingStatus">
+          <span class="pulse-dot" style="background:#10b981;"></span>
+          <span>Awaiting Camera Stream...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Telemetry & Recovery Tracker -->
+    <div class="telemetry-card">
+      
+      <!-- Live Goniometer Angles Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title" id="profileTitle">Index Finger Profile (ROM)</div>
+          <span style="font-size:0.75rem; color:var(--text-muted);">Real-Time Goniometer</span>
+        </div>
+
+        <!-- MCP Joint -->
+        <div class="joint-row">
+          <div class="joint-meta">
+            <span class="joint-name">MCP Joint (Knuckle)</span>
+            <div>
+              <span class="joint-value" id="mcpVal">180°</span>
+              <span class="joint-status" id="mcpStatus">Extended</span>
+            </div>
+          </div>
+          <div class="bar-bg">
+            <div class="bar-fill" id="mcpBar" style="width: 100%;"></div>
+          </div>
+        </div>
+
+        <!-- PIP Joint -->
+        <div class="joint-row">
+          <div class="joint-meta">
+            <span class="joint-name">PIP Joint (Middle)</span>
+            <div>
+              <span class="joint-value" id="pipVal">180°</span>
+              <span class="joint-status" id="pipStatus">Extended</span>
+            </div>
+          </div>
+          <div class="bar-bg">
+            <div class="bar-fill" id="pipBar" style="width: 100%;"></div>
+          </div>
+        </div>
+
+        <!-- DIP Joint -->
+        <div class="joint-row">
+          <div class="joint-meta">
+            <span class="joint-name">DIP Joint (Fingertip)</span>
+            <div>
+              <span class="joint-value" id="dipVal">180°</span>
+              <span class="joint-status" id="dipStatus">Extended</span>
+            </div>
+          </div>
+          <div class="bar-bg">
+            <div class="bar-fill" id="dipBar" style="width: 100%;"></div>
+          </div>
+        </div>
+
+        <!-- Thumb IP -->
+        <div class="joint-row" style="margin-bottom:0;">
+          <div class="joint-meta">
+            <span class="joint-name">Thumb IP Joint</span>
+            <div>
+              <span class="joint-value" id="thumbVal">180°</span>
+              <span class="joint-status" id="thumbStatus">Extended</span>
+            </div>
+          </div>
+          <div class="bar-bg">
+            <div class="bar-fill" id="thumbBar" style="width: 100%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rehabilitation Recovery Progress -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Session Recovery Metrics</div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-label">Max Flexion Peak</div>
+            <div class="stat-value" id="peakFlexion">180°</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Recovery Score</div>
+            <div class="stat-value" id="recoveryScore" style="color:var(--accent-green);">0%</div>
+          </div>
+        </div>
+
+        <div class="challenge-banner">
+          <div class="challenge-title">Active Exercise: Flexion Challenge</div>
+          <div class="challenge-desc">
+            Place hand inside box in <strong>Lateral (Side)</strong> view. Slowly bend fingers inward towards the palm to record maximum joint range.
+          </div>
+        </div>
+
+        <div style="margin-top:14px; display:flex; gap:10px;">
+          <button id="resetSessionBtn" style="flex:1;">Reset Session</button>
+          <button id="exportBtn" style="flex:1; border-color:var(--accent-cyan); color:var(--accent-cyan);">Export Data</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    // Elements
+    const video = document.getElementById('videoElement');
+    const canvas = document.getElementById('outputCanvas');
+    const ctx = canvas.getContext('2d');
+    const toggleCamBtn = document.getElementById('toggleCamBtn');
+    const cameraSelect = document.getElementById('cameraSelect');
+    const trackingStatus = document.getElementById('trackingStatus');
+    const viewBadge = document.getElementById('viewBadge');
+    const viewText = document.getElementById('viewText');
+
+    const mcpVal = document.getElementById('mcpVal');
+    const pipVal = document.getElementById('pipVal');
+    const dipVal = document.getElementById('dipVal');
+    const thumbVal = document.getElementById('thumbVal');
+
+    const mcpBar = document.getElementById('mcpBar');
+    const pipBar = document.getElementById('pipBar');
+    const dipBar = document.getElementById('dipBar');
+    const thumbBar = document.getElementById('thumbBar');
+
+    const mcpStatus = document.getElementById('mcpStatus');
+    const pipStatus = document.getElementById('pipStatus');
+    const dipStatus = document.getElementById('dipStatus');
+    const thumbStatus = document.getElementById('thumbStatus');
+
+    const peakFlexion = document.getElementById('peakFlexion');
+    const recoveryScore = document.getElementById('recoveryScore');
+    const resetSessionBtn = document.getElementById('resetSessionBtn');
+    const exportBtn = document.getElementById('exportBtn');
+
+    let camera = null;
+    let isCameraRunning = false;
+    let minFlexionSeen = 180;
+    let viewHistory = [];
+
+    // Angle calculation: 3D vector angle between (p1-p2) and (p3-p2)
+    function calculateAngle3D(p1, p2, p3) {
+      const v1 = { x: p1.x - p2.x, y: p1.y - p2.y, z: (p1.z || 0) - (p2.z || 0) };
+      const v2 = { x: p3.x - p2.x, y: p3.y - p2.y, z: (p3.z || 0) - (p2.z || 0) };
+
+      const dot = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+      const mag1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y + v1.z * v1.z);
+      const mag2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y + v2.z * v2.z);
+
+      if (mag1 === 0 || mag2 === 0) return 180;
+      let cosVal = dot / (mag1 * mag2);
+      cosVal = Math.max(-1.0, Math.min(1.0, cosVal));
+      return (Math.acos(cosVal) * 180) / Math.PI;
+    }
+
+    // View detection: Lateral vs Frontal using Knuckle horizontal spread ratio
+    function detectView(landmarks) {
+      const p0 = landmarks[0];   // Wrist
+      const p5 = landmarks[5];   // Index MCP
+      const p9 = landmarks[9];   // Middle MCP
+      const p17 = landmarks[17]; // Pinky MCP
+
+      const palmWidth = Math.abs(p5.x - p17.x);
+      const palmHeight = Math.sqrt(Math.pow(p9.x - p0.x, 2) + Math.pow(p9.y - p0.y, 2));
+
+      if (palmHeight === 0) return "FRONT";
+      const ratio = palmWidth / palmHeight;
+      const raw = ratio < 0.28 ? "LATERAL" : "FRONT";
+
+      viewHistory.push(raw);
+      if (viewHistory.length > 7) viewHistory.shift();
+
+      const lateralCount = viewHistory.filter(v => v === "LATERAL").length;
+      return lateralCount >= 4 ? "LATERAL" : "FRONT";
+    }
+
+    function getAngleColor(deg) {
+      if (deg >= 150) return "#10b981"; // Green (Extended)
+      if (deg >= 110) return "#f59e0b"; // Yellow (Partial Flex)
+      return "#f97316";                 // Orange (Full Flex)
+    }
+
+    function getStatusLabel(deg) {
+      if (deg >= 150) return "Extended";
+      if (deg >= 110) return "Partial Flex";
+      return "Full Flex";
+    }
+
+    function updateBadge(valEl, barEl, statusEl, deg) {
+      const rounded = Math.round(deg);
+      valEl.innerText = `${rounded}°`;
+      valEl.style.color = getAngleColor(deg);
+      
+      const pct = Math.max(0, Math.min(100, (deg / 180) * 100));
+      barEl.style.width = `${pct}%`;
+      barEl.style.background = getAngleColor(deg);
+
+      const stat = getStatusLabel(deg);
+      statusEl.innerText = stat;
+      statusEl.style.color = getAngleColor(deg);
+    }
+
+    // MediaPipe Hands Initialization
+    const hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.65,
+      minTrackingConfidence: 0.65
+    });
+
+    hands.onResults((results) => {
+      ctx.save();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        const landmarks = results.multiHandLandmarks[0];
+        trackingStatus.innerHTML = `<span class="pulse-dot" style="background:#10b981;"></span><span>Hand Locked & Tracking</span>`;
+
+        const view = detectView(landmarks);
+        if (view === "LATERAL") {
+          viewBadge.className = "badge-view lateral";
+          viewText.innerText = "Lateral (Side View)";
+        } else {
+          viewBadge.className = "badge-view";
+          viewText.innerText = "Front (Palmar View)";
+        }
+
+        // Calculate Angles
+        const idxMcp = calculateAngle3D(landmarks[0], landmarks[5], landmarks[6]);
+        const idxPip = calculateAngle3D(landmarks[5], landmarks[6], landmarks[7]);
+        const idxDip = calculateAngle3D(landmarks[6], landmarks[7], landmarks[8]);
+        const thmIp = calculateAngle3D(landmarks[2], landmarks[3], landmarks[4]);
+
+        updateBadge(mcpVal, mcpBar, mcpStatus, idxMcp);
+        updateBadge(pipVal, pipBar, pipStatus, idxPip);
+        updateBadge(dipVal, dipBar, dipStatus, idxDip);
+        updateBadge(thumbVal, thumbBar, thumbStatus, thmIp);
+
+        // Update Recovery Session Peak
+        if (idxPip < minFlexionSeen) {
+          minFlexionSeen = idxPip;
+          peakFlexion.innerText = `${Math.round(minFlexionSeen)}°`;
+          
+          // Recovery calculation relative to standard full range (180 to 60 deg = 120 deg range)
+          const recoveryPct = Math.round(Math.max(0, Math.min(100, ((180 - minFlexionSeen) / 120) * 100)));
+          recoveryScore.innerText = `${recoveryPct}%`;
+        }
+
+        // Draw Skeleton Lines
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(6, 182, 212, 0.75)";
+        const connections = [
+          [0,1],[1,2],[2,3],[3,4],
+          [0,5],[5,6],[6,7],[7,8],
+          [5,9],[9,10],[10,11],[11,12],
+          [9,13],[13,14],[14,15],[15,16],
+          [13,17],[0,17],[17,18],[18,19],[19,20]
+        ];
+
+        for (const [start, end] of connections) {
+          ctx.beginPath();
+          ctx.moveTo(landmarks[start].x * canvas.width, landmarks[start].y * canvas.height);
+          ctx.lineTo(landmarks[end].x * canvas.width, landmarks[end].y * canvas.height);
+          ctx.stroke();
+        }
+
+        // Draw Joint Points & Goniometer Arcs
+        for (let i = 0; i < landmarks.length; i++) {
+          const pt = landmarks[i];
+          const x = pt.x * canvas.width;
+          const y = pt.y * canvas.height;
+
+          let col = "#06b6d4";
+          let r = 5;
+
+          if ([5, 6, 7].includes(i)) {
+            col = "#10b981";
+            r = 7;
+            // Draw joint circle
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw goniometer arc on side view
+            if (view === "LATERAL" && i === 6) {
+              ctx.strokeStyle = getAngleColor(idxPip);
+              ctx.lineWidth = 3;
+              ctx.beginPath();
+              ctx.arc(x, y, 26, 0, Math.PI);
+              ctx.stroke();
+            }
+          } else {
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, 2 * Math.PI);
+            ctx.fill();
+          }
+        }
+
+      } else {
+        trackingStatus.innerHTML = `<span class="pulse-dot" style="background:#f59e0b;"></span><span>Place hand inside box...</span>`;
+      }
+      ctx.restore();
+    });
+
+    // Device enumeration & camera selection
+    async function populateCameras() {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        cameraSelect.innerHTML = videoDevices.map((d, idx) => 
+          `<option value="${d.deviceId}">${d.label || 'Box Camera ' + (idx + 1)}</option>`
+        ).join('');
+      } catch (e) {
+        console.warn("Could not list video devices", e);
+      }
+    }
+
+    async function startCamera(deviceId = null) {
+      if (camera) {
+        camera.stop();
+      }
+
+      const constraints = {
+        video: deviceId ? { deviceId: { exact: deviceId } } : { width: 1280, height: 720 }
+      };
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+        await video.play();
+
+        camera = new Camera(video, {
+          onFrame: async () => {
+            await hands.send({ image: video });
+          },
+          width: 1280,
+          height: 720
+        });
+        await camera.start();
+        isCameraRunning = true;
+        toggleCamBtn.innerText = "Stop Camera";
+        toggleCamBtn.style.background = "#ef4444";
+        trackingStatus.innerHTML = `<span class="pulse-dot" style="background:#10b981;"></span><span>Camera Stream Active</span>`;
+      } catch (err) {
+        alert("Camera access denied or device not found: " + err.message);
+      }
+    }
+
+    toggleCamBtn.addEventListener('click', () => {
+      if (isCameraRunning) {
+        if (camera) camera.stop();
+        if (video.srcObject) {
+          video.srcObject.getTracks().forEach(track => track.stop());
+        }
+        isCameraRunning = false;
+        toggleCamBtn.innerText = "Start Camera";
+        toggleCamBtn.style.background = "";
+        trackingStatus.innerHTML = `<span class="pulse-dot" style="background:#9ca3af;"></span><span>Camera Paused</span>`;
+      } else {
+        startCamera(cameraSelect.value || null);
+      }
+    });
+
+    cameraSelect.addEventListener('change', () => {
+      if (isCameraRunning) {
+        startCamera(cameraSelect.value);
+      }
+    });
+
+    resetSessionBtn.addEventListener('click', () => {
+      minFlexionSeen = 180;
+      peakFlexion.innerText = "180°";
+      recoveryScore.innerText = "0%";
+    });
+
+    exportBtn.addEventListener('click', () => {
+      const data = {
+        timestamp: new Date().toISOString(),
+        peakFlexionDegree: minFlexionSeen,
+        recoveryScorePercentage: recoveryScore.innerText,
+        latestJoints: {
+          mcp: mcpVal.innerText,
+          pip: pipVal.innerText,
+          dip: dipVal.innerText,
+          thumb: thumbVal.innerText
+        }
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rehab_session_${Date.now()}.json`;
+      a.click();
+    });
+
+    // Init camera devices list
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(() => populateCameras())
+      .catch(() => populateCameras());
+
+  </script>
+</body>
+</html>
