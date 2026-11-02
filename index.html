@@ -12,6 +12,10 @@
   <!-- MediaPipe Hands & Camera Utils -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  
+  <!-- jsPDF & autoTable for Clinical Medical PDF Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
   <style>
     :root {
@@ -805,30 +809,161 @@
     });
 
     exportBtn.addEventListener('click', () => {
-      const rowsData = {};
-      FINGERS.forEach(f => {
-        rowsData[f.name] = {
-          mcp: document.getElementById(`${f.name}-mcp`).innerText,
-          pip: document.getElementById(`${f.name}-pip`).innerText,
-          dip: f.dip ? document.getElementById(`${f.name}-dip`).innerText : 'N/A'
-        };
+      // Check if jsPDF is available
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert("PDF generator library is still loading. Please check internet connection.");
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
       });
 
-      const report = {
-        title: "NeuroRehab Hand Biomechanics Assessment",
-        standard: "Neutral Zero Method (0° Extension to 90° Flexion)",
-        timestamp: new Date().toISOString(),
-        peakFlexion: peakFlexion.innerText,
-        completedReps: repCount.innerText,
-        recoveryScore: recoveryScore.innerText,
-        jointMatrix: rowsData
-      };
+      const today = new Date();
+      const dateStr = today.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const currentView = viewText.innerText || "Front View";
 
-      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `rehab_clinical_report_${Date.now()}.json`;
-      a.click();
+      // 1. Header Banner
+      doc.setFillColor(18, 21, 32); // Dark Navy header
+      doc.rect(0, 0, 210, 36, 'F');
+
+      doc.setTextColor(16, 185, 129); // Accent Emerald
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text("NEUROREHAB MEDICAL ASSESSMENT", 14, 16);
+
+      doc.setTextColor(200, 210, 225);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text("Hand Biomechanics & 3D Joint Range of Motion (ROM) Clinical Report", 14, 23);
+      doc.text("Standard: ISOM Neutral Zero Method (0° Extension to 90° Flexion)", 14, 29);
+
+      // 2. Metadata Section
+      doc.setTextColor(50, 50, 60);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text("ASSESSMENT DETAILS", 14, 46);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(`Evaluation Date: ${dateStr}`, 14, 52);
+      doc.text(`Assessed Orientation: ${currentView}`, 14, 57);
+      doc.text("Test Environment: Controlled Rehabilitation Box", 14, 62);
+
+      // Status pill / score badge
+      doc.setFillColor(240, 253, 244);
+      doc.setDrawColor(16, 185, 129);
+      doc.roundedRect(130, 43, 66, 22, 3, 3, 'FD');
+
+      doc.setTextColor(16, 185, 129);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text(`${recoveryScore.innerText}`, 135, 54);
+
+      doc.setFontSize(8);
+      doc.setTextColor(80, 100, 90);
+      doc.text("Overall Mobility Score", 135, 60);
+
+      // 3. Performance Summary Cards
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(14, 70, 58, 20, 2, 2, 'FD');
+      doc.roundedRect(76, 70, 58, 20, 2, 2, 'FD');
+      doc.roundedRect(138, 70, 58, 20, 2, 2, 'FD');
+
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text("PEAK FLEXION ANGLE", 18, 76);
+      doc.text("COMPLETED REPETITIONS", 80, 76);
+      doc.text("RECOVERY GRADE", 142, 76);
+
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(6, 182, 212);
+      doc.text(`${peakFlexion.innerText}`, 18, 85);
+
+      doc.setTextColor(245, 158, 11);
+      doc.text(`${repCount.innerText} Reps`, 80, 85);
+
+      const scoreNum = parseInt(recoveryScore.innerText) || 0;
+      const grade = scoreNum >= 75 ? "Excellent (Normal)" : scoreNum >= 45 ? "Moderate Recovery" : "Needs Therapy";
+      doc.setTextColor(16, 185, 129);
+      doc.setFontSize(10);
+      doc.text(grade, 142, 85);
+
+      // 4. Multi-Finger Joint Matrix Table (autoTable)
+      const tableData = FINGERS.map(f => {
+        const mcp = document.getElementById(`${f.name}-mcp`)?.innerText || "0°";
+        const pip = document.getElementById(`${f.name}-pip`)?.innerText || "0°";
+        const dip = f.dip ? (document.getElementById(`${f.name}-dip`)?.innerText || "0°") : "N/A (2 Joints)";
+        const pipVal = parseInt(pip) || 0;
+        let interp = pipVal >= 60 ? "Functional Flexion (Normal)" : pipVal >= 25 ? "Partial Movement" : "Resting Extension";
+
+        return [f.name, mcp, pip, dip, interp];
+      });
+
+      doc.autoTable({
+        startY: 98,
+        head: [['Finger', 'MCP Joint', 'PIP Joint', 'DIP Joint', 'Clinical Mobility Status']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [18, 21, 32],
+          textColor: [255, 255, 255],
+          fontSize: 9,
+          fontStyle: 'bold'
+        },
+        bodyStyles: {
+          fontSize: 9,
+          textColor: [30, 41, 59]
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
+        },
+        styles: {
+          cellPadding: 4,
+          font: 'helvetica'
+        }
+      });
+
+      const finalY = doc.lastAutoTable.finalY + 12;
+
+      // 5. Clinical Recommendations
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 41, 59);
+      doc.text("THERAPEUTIC INTERPRETATION & NOTES", 14, finalY);
+
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      const notes = [
+        "• Joint angles measured under the ISOM Neutral Zero Method (0° indicates full extension, 90° indicates full functional flexion).",
+        "• Progression tracking compares active flexion range against historical baseline to determine motor recovery progress.",
+        "• Continue targeted daily rehabilitation sessions with active biofeedback monitoring."
+      ];
+      let lineY = finalY + 6;
+      notes.forEach(note => {
+        doc.text(note, 14, lineY);
+        lineY += 5;
+      });
+
+      // 6. Signature Lines
+      lineY += 16;
+      doc.setDrawColor(203, 213, 225);
+      doc.line(14, lineY, 80, lineY);
+      doc.line(130, lineY, 196, lineY);
+
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text("Attending Physiotherapist Signature", 14, lineY + 5);
+      doc.text("Clinic / Hospital Stamp", 130, lineY + 5);
+
+      // Save as PDF
+      doc.save(`NeuroRehab_Clinical_Report_${Date.now()}.pdf`);
     });
 
     navigator.mediaDevices.getUserMedia({ video: true })
