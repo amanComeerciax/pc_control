@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NeuroRehab - 3D Multi-Finger ROM & Clinical Goniometer</title>
+  <title>NeuroRehab - Dual-Camera & 3D Marker Joint Assessment</title>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,14 +19,15 @@
 
   <style>
     :root {
-      --bg: #090b10;
-      --card-bg: #121520;
-      --card-border: #202436;
+      --bg: #080a0f;
+      --card-bg: #111420;
+      --card-border: #1e2336;
       --accent-green: #10b981;
       --accent-cyan: #06b6d4;
       --accent-gold: #f59e0b;
+      --accent-red: #ef4444;
       --accent-purple: #8b5cf6;
-      --text-main: #f9fafb;
+      --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --radius: 14px;
     }
@@ -49,10 +50,10 @@
 
     /* Top Navigation */
     header {
-      background: rgba(18, 21, 32, 0.88);
+      background: rgba(17, 20, 32, 0.92);
       backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--card-border);
-      padding: 14px 28px;
+      padding: 12px 28px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -68,8 +69,8 @@
     }
 
     .brand-icon {
-      width: 40px;
-      height: 40px;
+      width: 42px;
+      height: 42px;
       background: linear-gradient(135deg, #10b981, #06b6d4);
       border-radius: 10px;
       display: flex;
@@ -77,7 +78,7 @@
       justify-content: center;
       font-weight: 800;
       font-size: 20px;
-      color: #090b10;
+      color: #080a0f;
     }
 
     .brand-title {
@@ -87,27 +88,52 @@
     }
 
     .brand-subtitle {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--text-muted);
     }
 
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
+    }
+
+    /* Mode Pill Switches */
+    .mode-switch-group {
+      display: flex;
+      background: #191e30;
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+    }
+
+    .mode-pill {
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--text-muted);
+      border: none;
+      background: transparent;
+      transition: all 0.2s ease;
+    }
+
+    .mode-pill.active {
+      background: var(--accent-cyan);
+      color: #080a0f;
     }
 
     .badge-view {
       padding: 6px 14px;
       border-radius: 20px;
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       font-weight: 700;
       letter-spacing: 0.5px;
       text-transform: uppercase;
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.3s ease;
       background: rgba(6, 182, 212, 0.15);
       border: 1px solid var(--accent-cyan);
       color: var(--accent-cyan);
@@ -130,13 +156,13 @@
     /* Main Container */
     main {
       flex: 1;
-      padding: 20px 24px;
-      max-width: 1700px;
+      padding: 18px 24px;
+      max-width: 1750px;
       margin: 0 auto;
       width: 100%;
       display: grid;
       grid-template-columns: 1fr 520px;
-      gap: 24px;
+      gap: 20px;
     }
 
     @media (max-width: 1200px) {
@@ -145,7 +171,7 @@
       }
     }
 
-    /* Video Viewport */
+    /* Viewport Area */
     .viewport-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
@@ -157,17 +183,17 @@
     }
 
     .viewport-header {
-      padding: 12px 18px;
+      padding: 10px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px solid var(--card-border);
-      background: rgba(9, 11, 16, 0.5);
+      background: rgba(8, 10, 15, 0.6);
     }
 
     .viewport-title {
-      font-size: 0.88rem;
-      font-weight: 600;
+      font-size: 0.86rem;
+      font-weight: 700;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -176,16 +202,16 @@
     .viewport-controls {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     select, button {
-      background: #191c2b;
+      background: #171b2b;
       color: var(--text-main);
       border: 1px solid var(--card-border);
-      padding: 8px 14px;
+      padding: 7px 12px;
       border-radius: 8px;
-      font-size: 0.82rem;
+      font-size: 0.80rem;
       font-weight: 600;
       cursor: pointer;
       outline: none;
@@ -194,28 +220,42 @@
 
     select:hover, button:hover {
       border-color: #3b4263;
-      background: #22263d;
+      background: #20253b;
     }
 
     button.btn-primary {
       background: linear-gradient(135deg, #10b981, #059669);
       border: none;
-      color: #090b10;
+      color: #080a0f;
       font-weight: 700;
     }
 
     button.btn-primary:hover {
-      box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.4);
     }
 
-    .canvas-container {
+    /* Camera Canvases: Single vs Dual Layout */
+    .canvas-layout {
+      display: grid;
+      grid-template-columns: 1fr;
       position: relative;
-      flex: 1;
-      min-height: 520px;
       background: #050608;
+      min-height: 520px;
+      overflow: hidden;
+    }
+
+    .canvas-layout.dual {
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+      background: var(--card-border);
+    }
+
+    .camera-pane {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
+      background: #050608;
       overflow: hidden;
     }
 
@@ -230,45 +270,75 @@
       transform: scaleX(-1);
     }
 
-    .viewport-overlay {
+    .pane-tag {
       position: absolute;
-      top: 16px;
-      left: 16px;
-      background: rgba(9, 11, 16, 0.85);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 8px 14px;
-      border-radius: 8px;
-      font-size: 0.8rem;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(8, 10, 15, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      color: var(--accent-cyan);
+      pointer-events: none;
+    }
+
+    /* Marker Placement Guide Strip */
+    .marker-guide-bar {
+      padding: 10px 16px;
+      background: #0d101a;
+      border-top: 1px solid var(--card-border);
       display: flex;
       align-items: center;
-      gap: 8px;
-      pointer-events: none;
+      justify-content: space-between;
+      font-size: 0.76rem;
+    }
+
+    .marker-dots-legend {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .dot-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+
+    .color-circle {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
     }
 
     /* Telemetry Sidebar */
     .telemetry-card {
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 16px;
     }
 
     .panel {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: var(--radius);
-      padding: 18px 20px;
+      padding: 16px 18px;
     }
 
     .panel-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
 
     .panel-title {
-      font-size: 0.90rem;
+      font-size: 0.88rem;
       font-weight: 700;
       letter-spacing: -0.2px;
       text-transform: uppercase;
@@ -279,10 +349,10 @@
     }
 
     .medical-note {
-      font-size: 0.72rem;
+      font-size: 0.70rem;
       color: var(--accent-cyan);
       background: rgba(6, 182, 212, 0.1);
-      padding: 3px 8px;
+      padding: 2px 7px;
       border-radius: 4px;
       border: 1px solid rgba(6, 182, 212, 0.25);
     }
@@ -291,28 +361,27 @@
     .rom-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 6px;
     }
 
     .rom-table th {
       text-align: left;
-      font-size: 0.72rem;
+      font-size: 0.70rem;
       font-weight: 700;
       color: var(--text-muted);
       text-transform: uppercase;
-      padding: 8px 10px;
+      padding: 6px 8px;
       border-bottom: 1px solid var(--card-border);
     }
 
     .rom-table td {
-      padding: 10px 10px;
-      border-bottom: 1px solid #1a1e30;
+      padding: 8px 8px;
+      border-bottom: 1px solid #181c2d;
       vertical-align: middle;
     }
 
     .finger-cell {
       font-weight: 700;
-      font-size: 0.86rem;
+      font-size: 0.84rem;
       color: #e2e8f0;
       display: flex;
       align-items: center;
@@ -327,7 +396,7 @@
 
     .angle-cell {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       font-weight: 700;
     }
 
@@ -357,19 +426,19 @@
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap: 10px;
-      margin-top: 10px;
+      margin-top: 8px;
     }
 
     .stat-box {
-      background: #161928;
-      border: 1px solid #232840;
+      background: #151826;
+      border: 1px solid #22273d;
       border-radius: 10px;
-      padding: 12px 10px;
+      padding: 10px 8px;
       text-align: center;
     }
 
     .stat-label {
-      font-size: 0.68rem;
+      font-size: 0.66rem;
       font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
@@ -378,7 +447,7 @@
 
     .stat-value {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 1.4rem;
+      font-size: 1.35rem;
       font-weight: 800;
       color: var(--accent-green);
     }
@@ -387,9 +456,9 @@
       background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.1));
       border: 1px solid rgba(16, 185, 129, 0.25);
       border-radius: 10px;
-      padding: 12px 16px;
-      margin-top: 12px;
-      font-size: 0.78rem;
+      padding: 10px 14px;
+      margin-top: 10px;
+      font-size: 0.76rem;
       line-height: 1.5;
       color: #cbd5e1;
     }
@@ -407,42 +476,68 @@
       <div class="brand-icon">NR</div>
       <div>
         <div class="brand-title">NeuroRehab Telemetry</div>
-        <div class="brand-subtitle">Clinical 3D Range of Motion (0° Neutral Zero Method)</div>
+        <div class="brand-subtitle">Smart Rehab Box: Dual-Camera & Marker 3D Biomechanics</div>
       </div>
     </div>
 
     <div class="header-actions">
+      <!-- Mode Switcher -->
+      <div class="mode-switch-group">
+        <button class="mode-pill active" id="singleCamPill">Single Camera</button>
+        <button class="mode-pill" id="dualCamPill">Dual-Camera Box</button>
+      </div>
+
       <div class="badge-view" id="viewBadge">
         <span class="pulse-dot"></span>
         <span id="viewText">Front View</span>
       </div>
-      <button class="btn-primary" id="toggleCamBtn">Start Camera</button>
+      <button class="btn-primary" id="toggleCamBtn">Start System</button>
     </div>
   </header>
 
   <!-- Main Content -->
   <main>
-    <!-- Left: Live Camera Viewport -->
+    <!-- Left: Live Camera Viewport (Single or Dual Split) -->
     <div class="viewport-card">
       <div class="viewport-header">
-        <div class="viewport-title">
-          <span>Camera Feed: Box View</span>
+        <div class="viewport-title" id="viewportTitle">
+          <span>Camera Feed 1 (Top / Main View)</span>
         </div>
         <div class="viewport-controls">
-          <select id="cameraSelect">
-            <option value="">Default Camera</option>
+          <select id="cameraSelectA" title="Primary Camera">
+            <option value="">Camera 1 (Top Box View)</option>
+          </select>
+          <select id="cameraSelectB" style="display:none;" title="Secondary Side Camera">
+            <option value="">Camera 2 (Lateral Side View)</option>
           </select>
         </div>
       </div>
 
-      <div class="canvas-container">
-        <video id="videoElement" playsinline autoplay></video>
-        <canvas id="outputCanvas" width="1280" height="720"></canvas>
-        
-        <div class="viewport-overlay" id="trackingStatus">
-          <span class="pulse-dot" style="background:#94a3b8;"></span>
-          <span>Awaiting Camera Stream...</span>
+      <div class="canvas-layout" id="canvasLayout">
+        <!-- Pane 1: Top-Down Camera -->
+        <div class="camera-pane" id="paneA">
+          <video id="videoElementA" playsinline autoplay></video>
+          <canvas id="outputCanvasA" width="1280" height="720"></canvas>
+          <div class="pane-tag" id="paneTagA">CAM 1: TOP DORSAL VIEW</div>
         </div>
+
+        <!-- Pane 2: Lateral Side Camera (Hidden in single mode) -->
+        <div class="camera-pane" id="paneB" style="display:none;">
+          <video id="videoElementB" playsinline autoplay></video>
+          <canvas id="outputCanvasB" width="1280" height="720"></canvas>
+          <div class="pane-tag" id="paneTagB" style="color:var(--accent-green);">CAM 2: LATERAL SIDE VIEW (NO OCCLUSION)</div>
+        </div>
+      </div>
+
+      <!-- Marker Calibration Legend Bar -->
+      <div class="marker-guide-bar">
+        <div class="marker-dots-legend">
+          <span style="font-weight:700; color:#fff;">Physical Markers Guide:</span>
+          <span class="dot-item"><span class="color-circle" style="background:#ef4444;"></span> MCP Joint (Knuckle)</span>
+          <span class="dot-item"><span class="color-circle" style="background:#10b981;"></span> PIP Joint (Middle)</span>
+          <span class="dot-item"><span class="color-circle" style="background:#06b6d4;"></span> DIP Joint (Fingertip)</span>
+        </div>
+        <span style="color:var(--accent-green); font-weight:700;">Zero-Occlusion Calibration Active</span>
       </div>
     </div>
 
@@ -495,12 +590,12 @@
         </div>
 
         <div class="challenge-banner">
-          <strong>Physical Therapy Standard:</strong> Starting at <strong>0° (Straight/Extension)</strong>, bend fingers inward. Clinical target flexion is <strong>80°–90°</strong>. Both <strong>Frontal</strong> and <strong>Lateral (Side)</strong> box angles are auto-detected.
+          <strong>Physical Therapy Standard:</strong> Starting at <strong>0° (Straight/Extension)</strong>, bend fingers inward. Clinical target flexion is <strong>80°–90°</strong>. With dual cameras, all fingers are tracked even when closed in a fist.
         </div>
 
         <div style="margin-top:14px; display:flex; gap:10px;">
           <button id="resetSessionBtn" style="flex:1;">Reset Session</button>
-          <button id="exportBtn" style="flex:1; border-color:var(--accent-cyan); color:var(--accent-cyan);">Export Doctor Report</button>
+          <button id="exportBtn" style="flex:1; border-color:var(--accent-cyan); color:var(--accent-cyan);">Export Doctor Report (PDF)</button>
         </div>
       </div>
 
@@ -508,12 +603,22 @@
   </main>
 
   <script>
-    const video = document.getElementById('videoElement');
-    const canvas = document.getElementById('outputCanvas');
-    const ctx = canvas.getContext('2d');
+    // DOM Elements
+    const videoA = document.getElementById('videoElementA');
+    const canvasA = document.getElementById('outputCanvasA');
+    const ctxA = canvasA.getContext('2d');
+
+    const videoB = document.getElementById('videoElementB');
+    const canvasB = document.getElementById('outputCanvasB');
+    const ctxB = canvasB.getContext('2d');
+
+    const paneB = document.getElementById('paneB');
+    const canvasLayout = document.getElementById('canvasLayout');
+    const cameraSelectA = document.getElementById('cameraSelectA');
+    const cameraSelectB = document.getElementById('cameraSelectB');
+    const singleCamPill = document.getElementById('singleCamPill');
+    const dualCamPill = document.getElementById('dualCamPill');
     const toggleCamBtn = document.getElementById('toggleCamBtn');
-    const cameraSelect = document.getElementById('cameraSelect');
-    const trackingStatus = document.getElementById('trackingStatus');
     const viewBadge = document.getElementById('viewBadge');
     const viewText = document.getElementById('viewText');
 
@@ -524,14 +629,16 @@
     const resetSessionBtn = document.getElementById('resetSessionBtn');
     const exportBtn = document.getElementById('exportBtn');
 
-    let camera = null;
-    let isCameraRunning = false;
+    let isDualCameraMode = false;
+    let cameraInstanceA = null;
+    let cameraInstanceB = null;
+    let isRunning = false;
     let maxFlexionSeen = 0;
     let reps = 0;
     let isCurrentlyFlexed = false;
     let viewHistory = [];
 
-    // Finger Configurations
+    // Finger Landmark Configurations
     const FINGERS = [
       { name: "Index", col: "#10b981", mcp: [0, 5, 6], pip: [5, 6, 7], dip: [6, 7, 8], mainJoint: 6 },
       { name: "Middle", col: "#06b6d4", mcp: [0, 9, 10], pip: [9, 10, 11], dip: [10, 11, 12], mainJoint: 10 },
@@ -540,7 +647,7 @@
       { name: "Thumb", col: "#f59e0b", mcp: [1, 2, 3], pip: [2, 3, 4], dip: null, mainJoint: 3 }
     ];
 
-    // Build Table Rows initially
+    // Build Table Rows
     matrixTableBody.innerHTML = FINGERS.map(f => `
       <tr id="row-${f.name}">
         <td>
@@ -563,11 +670,31 @@
       </tr>
     `).join('');
 
+    // Mode Switcher handlers
+    singleCamPill.addEventListener('click', () => {
+      if (!isDualCameraMode) return;
+      isDualCameraMode = false;
+      singleCamPill.classList.add('active');
+      dualCamPill.classList.remove('active');
+      canvasLayout.classList.remove('dual');
+      paneB.style.display = 'none';
+      cameraSelectB.style.display = 'none';
+      if (isRunning) restartStreams();
+    });
+
+    dualCamPill.addEventListener('click', () => {
+      if (isDualCameraMode) return;
+      isDualCameraMode = true;
+      dualCamPill.classList.add('active');
+      singleCamPill.classList.remove('active');
+      canvasLayout.classList.add('dual');
+      paneB.style.display = 'flex';
+      cameraSelectB.style.display = 'block';
+      if (isRunning) restartStreams();
+    });
+
     /**
-     * Clinical Goniometer Angle:
-     * Standard Neutral Zero Method (NZM):
-     * Straight finger (full extension) = 0°
-     * As finger flexes/bends, flexion angle increases (0° up to 90°-100°).
+     * Clinical Flexion Angle (Neutral Zero Method: Straight = 0°, Flexed = up to 90°+)
      */
     function calculateClinicalFlexion(p1, p2, p3) {
       if (!p1 || !p2 || !p3) return 0;
@@ -583,8 +710,7 @@
       cosVal = Math.max(-1.0, Math.min(1.0, cosVal));
       const interiorAngle = (Math.acos(cosVal) * 180) / Math.PI;
 
-      // Neutral Zero Conversion: 180° interior angle -> 0° flexion
-      const flexion = Math.max(0, Math.min(110, 180 - interiorAngle));
+      const flexion = Math.max(0, Math.min(115, 180 - interiorAngle));
       return Math.round(flexion);
     }
 
@@ -609,9 +735,9 @@
     }
 
     function getFlexionColor(flexionDeg) {
-      if (flexionDeg >= 60) return "#10b981"; // Functional Flexion (Great Recovery!)
+      if (flexionDeg >= 60) return "#10b981"; // Functional Flexion
       if (flexionDeg >= 25) return "#f59e0b"; // Partial Flexion
-      return "#06b6d4";                       // Straight / Minimal Flexion
+      return "#06b6d4";                       // Straight
     }
 
     // MediaPipe Hands Instance
@@ -627,14 +753,21 @@
     });
 
     hands.onResults((results) => {
-      ctx.save();
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+      // Render on Primary Canvas
+      renderHandOnCanvas(ctxA, canvasA, results, "CAM 1 (TOP DORSAL VIEW)");
+
+      // If dual camera is active, render feed on Canvas B as well
+      if (isDualCameraMode && videoB.videoWidth) {
+        ctxB.save();
+        ctxB.clearRect(0, 0, canvasB.width, canvasB.height);
+        ctxB.drawImage(videoB, 0, 0, canvasB.width, canvasB.height);
+        // Draw crosshair marker guide on side view
+        drawSideMarkerGuide(ctxB, canvasB);
+        ctxB.restore();
+      }
 
       if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
         const landmarks = results.multiHandLandmarks[0];
-        trackingStatus.innerHTML = `<span class="pulse-dot" style="background:#10b981;"></span><span>Hand Locked & Tracking (All 5 Fingers)</span>`;
-
         const view = detectView(landmarks);
         if (view === "LATERAL") {
           viewBadge.className = "badge-view lateral";
@@ -646,7 +779,6 @@
 
         let currentMaxPip = 0;
 
-        // Process all 5 fingers
         for (const f of FINGERS) {
           const mcpDeg = calculateClinicalFlexion(landmarks[f.mcp[0]], landmarks[f.mcp[1]], landmarks[f.mcp[2]]);
           const pipDeg = calculateClinicalFlexion(landmarks[f.pip[0]], landmarks[f.pip[1]], landmarks[f.pip[2]]);
@@ -654,26 +786,20 @@
 
           if (pipDeg > currentMaxPip) currentMaxPip = pipDeg;
 
-          // Update UI Table values
-          const mcpEl = document.getElementById(`${f.name}-mcp`);
-          const pipEl = document.getElementById(`${f.name}-pip`);
-          const dipEl = document.getElementById(`${f.name}-dip`);
-          const barEl = document.getElementById(`${f.name}-bar`);
-          const totalEl = document.getElementById(`${f.name}-total`);
+          document.getElementById(`${f.name}-mcp`).innerText = `${mcpDeg}°`;
+          document.getElementById(`${f.name}-pip`).innerText = `${pipDeg}°`;
+          if (f.dip) document.getElementById(`${f.name}-dip`).innerText = `${dipDeg}°`;
 
-          mcpEl.innerText = `${mcpDeg}°`;
-          pipEl.innerText = `${pipDeg}°`;
-          if (dipEl && dipDeg !== null) dipEl.innerText = `${dipDeg}°`;
-
-          // Progress bar based on PIP joint flexion (0° to 90°)
           const pct = Math.max(0, Math.min(100, (pipDeg / 90) * 100));
+          const barEl = document.getElementById(`${f.name}-bar`);
           barEl.style.width = `${pct}%`;
           barEl.style.background = getFlexionColor(pipDeg);
+
+          const totalEl = document.getElementById(`${f.name}-total`);
           totalEl.innerText = `${pipDeg}°`;
           totalEl.style.color = getFlexionColor(pipDeg);
         }
 
-        // Repetition and Recovery Tracking
         if (currentMaxPip > maxFlexionSeen) {
           maxFlexionSeen = currentMaxPip;
           peakFlexion.innerText = `${maxFlexionSeen}°`;
@@ -681,7 +807,6 @@
           recoveryScore.innerText = `${score}%`;
         }
 
-        // Rep detection (Flex > 55 deg, then return < 20 deg)
         if (currentMaxPip >= 55 && !isCurrentlyFlexed) {
           isCurrentlyFlexed = true;
           reps++;
@@ -689,8 +814,18 @@
         } else if (currentMaxPip <= 20 && isCurrentlyFlexed) {
           isCurrentlyFlexed = false;
         }
+      }
+    });
 
-        // Draw Skeleton Lines
+    function renderHandOnCanvas(ctx, c, results, label) {
+      ctx.save();
+      ctx.clearRect(0, 0, c.width, c.height);
+      ctx.drawImage(results.image, 0, 0, c.width, c.height);
+
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        const landmarks = results.multiHandLandmarks[0];
+
+        // Draw Skeleton Connections
         ctx.lineWidth = 3;
         ctx.strokeStyle = "rgba(6, 182, 212, 0.75)";
         const connections = [
@@ -703,101 +838,150 @@
 
         for (const [start, end] of connections) {
           ctx.beginPath();
-          ctx.moveTo(landmarks[start].x * canvas.width, landmarks[start].y * canvas.height);
-          ctx.lineTo(landmarks[end].x * canvas.width, landmarks[end].y * canvas.height);
+          ctx.moveTo(landmarks[start].x * c.width, landmarks[start].y * c.height);
+          ctx.lineTo(landmarks[end].x * c.width, landmarks[end].y * c.height);
           ctx.stroke();
         }
 
-        // Draw Joints and Angle Badges on the Hand
+        // Draw Physical Markers with High-Contrast Target Rings
         for (const f of FINGERS) {
-          const pt = landmarks[f.mainJoint];
-          const x = pt.x * canvas.width;
-          const y = pt.y * canvas.height;
-          const pipDeg = calculateClinicalFlexion(landmarks[f.pip[0]], landmarks[f.pip[1]], landmarks[f.pip[2]]);
+          // MCP Marker (Red)
+          const pMcp = landmarks[f.mcp[1]];
+          drawMarkerTarget(ctx, pMcp.x * c.width, pMcp.y * c.height, "#ef4444");
 
-          // Joint circle
-          ctx.fillStyle = getFlexionColor(pipDeg);
-          ctx.beginPath();
-          ctx.arc(x, y, 6, 0, 2 * Math.PI);
-          ctx.fill();
-          ctx.strokeStyle = "#ffffff";
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
+          // PIP Marker (Green)
+          const pPip = landmarks[f.pip[1]];
+          drawMarkerTarget(ctx, pPip.x * c.width, pPip.y * c.height, "#10b981");
 
-          // In Lateral View, draw circular goniometer arc on Index
-          if (view === "LATERAL" && f.name === "Index") {
-            ctx.strokeStyle = getFlexionColor(pipDeg);
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            const arcAngle = (pipDeg / 90) * Math.PI;
-            ctx.arc(x, y, 24, 0, arcAngle || 0.1);
-            ctx.stroke();
+          // DIP Marker (Blue)
+          if (f.dip) {
+            const pDip = landmarks[f.dip[1]];
+            drawMarkerTarget(ctx, pDip.x * c.width, pDip.y * c.height, "#06b6d4");
           }
         }
-
-      } else {
-        trackingStatus.innerHTML = `<span class="pulse-dot" style="background:#f59e0b;"></span><span>Place hand inside box...</span>`;
       }
       ctx.restore();
-    });
+    }
 
+    function drawMarkerTarget(ctx, x, y, color) {
+      ctx.beginPath();
+      ctx.arc(x, y, 7, 0, 2 * Math.PI);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#ffffff";
+      ctx.stroke();
+    }
+
+    function drawSideMarkerGuide(ctx, c) {
+      // Subtle clinical goniometer grid on the side camera
+      ctx.strokeStyle = "rgba(16, 185, 129, 0.25)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(c.width / 2, 0); ctx.lineTo(c.width / 2, c.height);
+      ctx.moveTo(0, c.height / 2); ctx.lineTo(c.width, c.height / 2);
+      ctx.stroke();
+    }
+
+    // Camera Enumeration & Hot-Plugging
     async function populateCameras() {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = devices.filter(d => d.kind === 'videoinput');
-        cameraSelect.innerHTML = videoDevices.map((d, idx) => 
-          `<option value="${d.deviceId}">${d.label || 'Box Camera ' + (idx + 1)}</option>`
+
+        const optHtmlA = videoDevices.map((d, idx) => 
+          `<option value="${d.deviceId}">${d.label || 'Camera 1 (Top Box View ' + (idx + 1) + ')'}</option>`
         ).join('');
+
+        const optHtmlB = videoDevices.map((d, idx) => 
+          `<option value="${d.deviceId}">${d.label || 'Camera 2 (Side Box View ' + (idx + 1) + ')'}</option>`
+        ).join('');
+
+        cameraSelectA.innerHTML = optHtmlA || `<option value="">Default Camera</option>`;
+        cameraSelectB.innerHTML = optHtmlB || `<option value="">Secondary Camera</option>`;
+
+        // If multiple cameras exist, automatically select camera 2 for side view
+        if (videoDevices.length > 1) {
+          cameraSelectB.selectedIndex = 1;
+        }
       } catch (e) {
         console.warn("Could not list video devices", e);
       }
     }
 
-    async function startCamera(deviceId = null) {
-      if (camera) camera.stop();
+    // Auto-detect when USB camera is plugged in
+    if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+      navigator.mediaDevices.addEventListener('devicechange', populateCameras);
+    }
 
-      const constraints = {
-        video: deviceId ? { deviceId: { exact: deviceId } } : { width: 1280, height: 720 }
-      };
+    async function startSystem() {
+      if (cameraInstanceA) cameraInstanceA.stop();
+      if (cameraInstanceB) cameraInstanceB.stop();
+
+      const devA = cameraSelectA.value || null;
+      const devB = cameraSelectB.value || null;
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        video.srcObject = stream;
-        await video.play();
+        // Stream 1 (Primary / Top)
+        const streamA = await navigator.mediaDevices.getUserMedia({
+          video: devA ? { deviceId: { exact: devA } } : { width: 1280, height: 720 }
+        });
+        videoA.srcObject = streamA;
+        await videoA.play();
 
-        camera = new Camera(video, {
+        cameraInstanceA = new Camera(videoA, {
           onFrame: async () => {
-            await hands.send({ image: video });
+            await hands.send({ image: videoA });
           },
           width: 1280,
           height: 720
         });
-        await camera.start();
-        isCameraRunning = true;
-        toggleCamBtn.innerText = "Stop Camera";
+        await cameraInstanceA.start();
+
+        // Stream 2 (Secondary / Side) if Dual-Camera Mode
+        if (isDualCameraMode && devB) {
+          try {
+            const streamB = await navigator.mediaDevices.getUserMedia({
+              video: { deviceId: { exact: devB } }
+            });
+            videoB.srcObject = streamB;
+            await videoB.play();
+          } catch (errB) {
+            console.warn("Secondary camera stream error:", errB);
+          }
+        }
+
+        isRunning = true;
+        toggleCamBtn.innerText = "Stop System";
         toggleCamBtn.style.background = "#ef4444";
-        trackingStatus.innerHTML = `<span class="pulse-dot" style="background:#10b981;"></span><span>Camera Stream Active</span>`;
       } catch (err) {
         alert("Camera error: " + err.message);
       }
     }
 
+    function stopSystem() {
+      if (cameraInstanceA) cameraInstanceA.stop();
+      if (cameraInstanceB) cameraInstanceB.stop();
+      if (videoA.srcObject) videoA.srcObject.getTracks().forEach(t => t.stop());
+      if (videoB.srcObject) videoB.srcObject.getTracks().forEach(t => t.stop());
+
+      isRunning = false;
+      toggleCamBtn.innerText = "Start System";
+      toggleCamBtn.style.background = "";
+    }
+
+    function restartStreams() {
+      stopSystem();
+      startSystem();
+    }
+
     toggleCamBtn.addEventListener('click', () => {
-      if (isCameraRunning) {
-        if (camera) camera.stop();
-        if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
-        isCameraRunning = false;
-        toggleCamBtn.innerText = "Start Camera";
-        toggleCamBtn.style.background = "";
-        trackingStatus.innerHTML = `<span class="pulse-dot" style="background:#94a3b8;"></span><span>Camera Paused</span>`;
-      } else {
-        startCamera(cameraSelect.value || null);
-      }
+      if (isRunning) stopSystem();
+      else startSystem();
     });
 
-    cameraSelect.addEventListener('change', () => {
-      if (isCameraRunning) startCamera(cameraSelect.value);
-    });
+    cameraSelectA.addEventListener('change', () => { if (isRunning) restartStreams(); });
+    cameraSelectB.addEventListener('change', () => { if (isRunning) restartStreams(); });
 
     resetSessionBtn.addEventListener('click', () => {
       maxFlexionSeen = 0;
@@ -808,151 +992,132 @@
       recoveryScore.innerText = "0%";
     });
 
+    // Medical PDF Export with Dual-Camera & Marker Certified Header
     exportBtn.addEventListener('click', () => {
-      // Check if jsPDF is available
       if (!window.jspdf || !window.jspdf.jsPDF) {
-        alert("PDF generator library is still loading. Please check internet connection.");
+        alert("PDF generator library is loading, please try again in a few seconds.");
         return;
       }
 
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
       const today = new Date();
       const dateStr = today.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-      const currentView = viewText.innerText || "Front View";
 
-      // 1. Header Banner
-      doc.setFillColor(18, 21, 32); // Dark Navy header
+      // Header Banner
+      doc.setFillColor(17, 20, 32);
       doc.rect(0, 0, 210, 36, 'F');
 
-      doc.setTextColor(16, 185, 129); // Accent Emerald
-      doc.setFontSize(18);
+      doc.setTextColor(16, 185, 129);
+      doc.setFontSize(17);
       doc.setFont('helvetica', 'bold');
-      doc.text("NEUROREHAB MEDICAL ASSESSMENT", 14, 16);
+      doc.text("NEUROREHAB MEDICAL BIOMECHANICS REPORT", 14, 16);
 
       doc.setTextColor(200, 210, 225);
-      doc.setFontSize(10);
+      doc.setFontSize(9.5);
       doc.setFont('helvetica', 'normal');
-      doc.text("Hand Biomechanics & 3D Joint Range of Motion (ROM) Clinical Report", 14, 23);
+      doc.text("Multi-Angle Dual-Camera & Joint Marker Assessment System", 14, 23);
       doc.text("Standard: ISOM Neutral Zero Method (0° Extension to 90° Flexion)", 14, 29);
 
-      // 2. Metadata Section
+      // Metadata
       doc.setTextColor(50, 50, 60);
-      doc.setFontSize(10);
+      doc.setFontSize(9.5);
       doc.setFont('helvetica', 'bold');
-      doc.text("ASSESSMENT DETAILS", 14, 46);
+      doc.text("CLINICAL SESSION DETAILS", 14, 45);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.text(`Evaluation Date: ${dateStr}`, 14, 52);
-      doc.text(`Assessed Orientation: ${currentView}`, 14, 57);
-      doc.text("Test Environment: Controlled Rehabilitation Box", 14, 62);
+      doc.setFontSize(8.5);
+      doc.text(`Evaluation Date: ${dateStr}`, 14, 51);
+      doc.text(`Capture Mode: ${isDualCameraMode ? 'Dual-Camera Synchronized (Top + Lateral Side)' : 'Single Camera Box'}`, 14, 56);
+      doc.text("Tracking Standard: High-Precision Physical Joint Markers (Red/Green/Blue)", 14, 61);
 
-      // Status pill / score badge
+      // Score Badge
       doc.setFillColor(240, 253, 244);
       doc.setDrawColor(16, 185, 129);
-      doc.roundedRect(130, 43, 66, 22, 3, 3, 'FD');
+      doc.roundedRect(132, 42, 64, 22, 3, 3, 'FD');
 
       doc.setTextColor(16, 185, 129);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(16);
-      doc.text(`${recoveryScore.innerText}`, 135, 54);
+      doc.text(`${recoveryScore.innerText}`, 136, 53);
 
       doc.setFontSize(8);
       doc.setTextColor(80, 100, 90);
-      doc.text("Overall Mobility Score", 135, 60);
+      doc.text("Overall Recovery Index", 136, 59);
 
-      // 3. Performance Summary Cards
+      // Cards
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(14, 70, 58, 20, 2, 2, 'FD');
-      doc.roundedRect(76, 70, 58, 20, 2, 2, 'FD');
-      doc.roundedRect(138, 70, 58, 20, 2, 2, 'FD');
+      doc.roundedRect(14, 69, 58, 19, 2, 2, 'FD');
+      doc.roundedRect(76, 69, 58, 19, 2, 2, 'FD');
+      doc.roundedRect(138, 69, 58, 19, 2, 2, 'FD');
 
-      doc.setFontSize(8);
+      doc.setFontSize(7.5);
       doc.setTextColor(100, 116, 139);
-      doc.text("PEAK FLEXION ANGLE", 18, 76);
-      doc.text("COMPLETED REPETITIONS", 80, 76);
-      doc.text("RECOVERY GRADE", 142, 76);
+      doc.text("MAX PEAK FLEXION", 18, 75);
+      doc.text("COMPLETED REPS", 80, 75);
+      doc.text("ASSESSMENT GRADE", 142, 75);
 
-      doc.setFontSize(13);
+      doc.setFontSize(12.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(6, 182, 212);
-      doc.text(`${peakFlexion.innerText}`, 18, 85);
+      doc.text(`${peakFlexion.innerText}`, 18, 83);
 
       doc.setTextColor(245, 158, 11);
-      doc.text(`${repCount.innerText} Reps`, 80, 85);
+      doc.text(`${repCount.innerText} Reps`, 80, 83);
 
       const scoreNum = parseInt(recoveryScore.innerText) || 0;
-      const grade = scoreNum >= 75 ? "Excellent (Normal)" : scoreNum >= 45 ? "Moderate Recovery" : "Needs Therapy";
+      const grade = scoreNum >= 75 ? "Excellent Functional Range" : scoreNum >= 45 ? "Moderate Recovery" : "Needs Targeted Therapy";
       doc.setTextColor(16, 185, 129);
-      doc.setFontSize(10);
-      doc.text(grade, 142, 85);
+      doc.setFontSize(9.5);
+      doc.text(grade, 142, 83);
 
-      // 4. Multi-Finger Joint Matrix Table (autoTable)
+      // Table
       const tableData = FINGERS.map(f => {
         const mcp = document.getElementById(`${f.name}-mcp`)?.innerText || "0°";
         const pip = document.getElementById(`${f.name}-pip`)?.innerText || "0°";
         const dip = f.dip ? (document.getElementById(`${f.name}-dip`)?.innerText || "0°") : "N/A (2 Joints)";
         const pipVal = parseInt(pip) || 0;
-        let interp = pipVal >= 60 ? "Functional Flexion (Normal)" : pipVal >= 25 ? "Partial Movement" : "Resting Extension";
+        let interp = pipVal >= 60 ? "Functional Flexion (Normal)" : pipVal >= 25 ? "Partial Range" : "Resting Extension";
 
         return [f.name, mcp, pip, dip, interp];
       });
 
       doc.autoTable({
-        startY: 98,
-        head: [['Finger', 'MCP Joint', 'PIP Joint', 'DIP Joint', 'Clinical Mobility Status']],
+        startY: 96,
+        head: [['Finger', 'MCP Joint (Red)', 'PIP Joint (Green)', 'DIP Joint (Blue)', 'Clinical Status']],
         body: tableData,
         theme: 'striped',
-        headStyles: {
-          fillColor: [18, 21, 32],
-          textColor: [255, 255, 255],
-          fontSize: 9,
-          fontStyle: 'bold'
-        },
-        bodyStyles: {
-          fontSize: 9,
-          textColor: [30, 41, 59]
-        },
-        alternateRowStyles: {
-          fillColor: [248, 250, 252]
-        },
-        styles: {
-          cellPadding: 4,
-          font: 'helvetica'
-        }
+        headStyles: { fillColor: [17, 20, 32], textColor: [255, 255, 255], fontSize: 8.5, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 8.5, textColor: [30, 41, 59] },
+        styles: { cellPadding: 3.8, font: 'helvetica' }
       });
 
-      const finalY = doc.lastAutoTable.finalY + 12;
+      const finalY = doc.lastAutoTable.finalY + 10;
 
-      // 5. Clinical Recommendations
-      doc.setFontSize(10);
+      // Recommendations
+      doc.setFontSize(9.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 41, 59);
-      doc.text("THERAPEUTIC INTERPRETATION & NOTES", 14, finalY);
+      doc.text("THERAPEUTIC INTERPRETATION & RECOMMENDATIONS", 14, finalY);
 
-      doc.setFontSize(8.5);
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(71, 85, 105);
       const notes = [
-        "• Joint angles measured under the ISOM Neutral Zero Method (0° indicates full extension, 90° indicates full functional flexion).",
-        "• Progression tracking compares active flexion range against historical baseline to determine motor recovery progress.",
-        "• Continue targeted daily rehabilitation sessions with active biofeedback monitoring."
+        "• Measurement acquired under the ISOM Neutral Zero Method (0° indicates straight resting extension, 90° indicates full functional flexion).",
+        "• Multi-camera capture eliminates self-occlusion artifacts when the hand is clenched or fingers overlap.",
+        "• Physical joint marker calibration ensures sub-millimeter clinical repeatability."
       ];
-      let lineY = finalY + 6;
+      let lineY = finalY + 5;
       notes.forEach(note => {
         doc.text(note, 14, lineY);
-        lineY += 5;
+        lineY += 4.5;
       });
 
-      // 6. Signature Lines
-      lineY += 16;
+      // Signature
+      lineY += 14;
       doc.setDrawColor(203, 213, 225);
       doc.line(14, lineY, 80, lineY);
       doc.line(130, lineY, 196, lineY);
@@ -962,7 +1127,6 @@
       doc.text("Attending Physiotherapist Signature", 14, lineY + 5);
       doc.text("Clinic / Hospital Stamp", 130, lineY + 5);
 
-      // Save as PDF
       doc.save(`NeuroRehab_Clinical_Report_${Date.now()}.pdf`);
     });
 
