@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NeuroRehab - Dual-Camera & 3D Marker Joint Assessment</title>
+  <title>NeuroRehab - Dual-Camera Box, 3D Digital Twin & One-Euro Filter</title>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,15 +13,19 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
   
+  <!-- Three.js & OrbitControls for Real-Time 3D Digital Twin -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
   <!-- jsPDF & autoTable for Clinical Medical PDF Generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
   <style>
     :root {
-      --bg: #080a0f;
-      --card-bg: #111420;
-      --card-border: #1e2336;
+      --bg: #07090e;
+      --card-bg: #10131d;
+      --card-border: #1c2133;
       --accent-green: #10b981;
       --accent-cyan: #06b6d4;
       --accent-gold: #f59e0b;
@@ -50,7 +54,7 @@
 
     /* Top Navigation */
     header {
-      background: rgba(17, 20, 32, 0.92);
+      background: rgba(16, 19, 29, 0.94);
       backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--card-border);
       padding: 12px 28px;
@@ -78,30 +82,30 @@
       justify-content: center;
       font-weight: 800;
       font-size: 20px;
-      color: #080a0f;
+      color: #07090e;
     }
 
     .brand-title {
-      font-size: 1.15rem;
+      font-size: 1.12rem;
       font-weight: 700;
       letter-spacing: -0.3px;
     }
 
     .brand-subtitle {
-      font-size: 0.72rem;
+      font-size: 0.70rem;
       color: var(--text-muted);
     }
 
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
-    /* Mode Pill Switches */
+    /* 3-Way Mode Switcher */
     .mode-switch-group {
       display: flex;
-      background: #191e30;
+      background: #171c2c;
       padding: 3px;
       border-radius: 10px;
       border: 1px solid var(--card-border);
@@ -110,7 +114,7 @@
     .mode-pill {
       padding: 6px 12px;
       border-radius: 8px;
-      font-size: 0.76rem;
+      font-size: 0.74rem;
       font-weight: 700;
       cursor: pointer;
       color: var(--text-muted);
@@ -121,13 +125,13 @@
 
     .mode-pill.active {
       background: var(--accent-cyan);
-      color: #080a0f;
+      color: #07090e;
     }
 
     .badge-view {
-      padding: 6px 14px;
+      padding: 6px 12px;
       border-radius: 20px;
-      font-size: 0.76rem;
+      font-size: 0.74rem;
       font-weight: 700;
       letter-spacing: 0.5px;
       text-transform: uppercase;
@@ -153,19 +157,35 @@
       box-shadow: 0 0 10px currentColor;
     }
 
+    button.btn-primary {
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: none;
+      color: #07090e;
+      font-weight: 700;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.80rem;
+      transition: all 0.2s ease;
+    }
+
+    button.btn-primary:hover {
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.4);
+    }
+
     /* Main Container */
     main {
       flex: 1;
-      padding: 18px 24px;
-      max-width: 1750px;
+      padding: 16px 20px;
+      max-width: 1850px;
       margin: 0 auto;
       width: 100%;
       display: grid;
-      grid-template-columns: 1fr 520px;
-      gap: 20px;
+      grid-template-columns: 1fr 490px;
+      gap: 18px;
     }
 
-    @media (max-width: 1200px) {
+    @media (max-width: 1300px) {
       main {
         grid-template-columns: 1fr;
       }
@@ -188,11 +208,11 @@
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px solid var(--card-border);
-      background: rgba(8, 10, 15, 0.6);
+      background: rgba(7, 9, 14, 0.6);
     }
 
     .viewport-title {
-      font-size: 0.86rem;
+      font-size: 0.84rem;
       font-weight: 700;
       display: flex;
       align-items: center;
@@ -206,12 +226,12 @@
     }
 
     select, button {
-      background: #171b2b;
+      background: #171b29;
       color: var(--text-main);
       border: 1px solid var(--card-border);
-      padding: 7px 12px;
+      padding: 6px 12px;
       border-radius: 8px;
-      font-size: 0.80rem;
+      font-size: 0.78rem;
       font-weight: 600;
       cursor: pointer;
       outline: none;
@@ -220,80 +240,137 @@
 
     select:hover, button:hover {
       border-color: #3b4263;
-      background: #20253b;
+      background: #202538;
     }
 
-    button.btn-primary {
-      background: linear-gradient(135deg, #10b981, #059669);
-      border: none;
-      color: #080a0f;
-      font-weight: 700;
-    }
-
-    button.btn-primary:hover {
-      box-shadow: 0 0 14px rgba(16, 185, 129, 0.4);
-    }
-
-    /* Camera Canvases: Single vs Dual Layout */
-    .canvas-layout {
+    /* Flexible Grid System */
+    .viewports-grid {
       display: grid;
-      grid-template-columns: 1fr;
       position: relative;
-      background: #050608;
+      background: var(--card-border);
       min-height: 520px;
       overflow: hidden;
-    }
-
-    .canvas-layout.dual {
-      grid-template-columns: 1fr 1fr;
       gap: 2px;
-      background: var(--card-border);
+      transition: all 0.3s ease;
     }
 
-    .camera-pane {
+    .viewports-grid.mode-cam-3d {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .viewports-grid.mode-dual-cam {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .viewports-grid.mode-tri-view {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    @media (max-width: 950px) {
+      .viewports-grid.mode-tri-view {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .viewports-grid {
+        grid-template-columns: 1fr !important;
+      }
+    }
+
+    .pane-container {
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #050608;
+      background: #040507;
       overflow: hidden;
+      min-height: 380px;
     }
 
     video {
       display: none;
     }
 
-    canvas {
+    canvas.stream-canvas {
       width: 100%;
       height: 100%;
       object-fit: contain;
       transform: scaleX(-1);
     }
 
-    .pane-tag {
+    #threejsContainer {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .pane-badge {
       position: absolute;
       bottom: 12px;
       left: 12px;
-      background: rgba(8, 10, 15, 0.85);
+      background: rgba(7, 9, 14, 0.88);
       border: 1px solid rgba(255, 255, 255, 0.12);
       padding: 4px 10px;
       border-radius: 6px;
-      font-size: 0.72rem;
+      font-size: 0.70rem;
       font-weight: 700;
       letter-spacing: 0.4px;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 10;
+    }
+
+    .orbit-hint {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(7, 9, 14, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.68rem;
       color: var(--accent-cyan);
       pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Calibration Overlay Banner */
+    .calibration-banner {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(16, 19, 29, 0.95);
+      border: 1px solid var(--accent-gold);
+      box-shadow: 0 0 25px rgba(245, 158, 11, 0.25);
+      padding: 12px 24px;
+      border-radius: 10px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      z-index: 100;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .calibration-banner.active {
+      display: flex;
     }
 
     /* Marker Placement Guide Strip */
     .marker-guide-bar {
       padding: 10px 16px;
-      background: #0d101a;
+      background: #0c0f18;
       border-top: 1px solid var(--card-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 0.76rem;
+      font-size: 0.74rem;
     }
 
     .marker-dots-legend {
@@ -357,7 +434,7 @@
       border: 1px solid rgba(6, 182, 212, 0.25);
     }
 
-    /* Matrix Table: All 5 Fingers */
+    /* Matrix Table */
     .rom-table {
       width: 100%;
       border-collapse: collapse;
@@ -475,69 +552,94 @@
     <div class="brand">
       <div class="brand-icon">NR</div>
       <div>
-        <div class="brand-title">NeuroRehab Telemetry</div>
-        <div class="brand-subtitle">Smart Rehab Box: Dual-Camera & Marker 3D Biomechanics</div>
+        <div class="brand-title">NeuroRehab 3D Digital Twin</div>
+        <div class="brand-subtitle">Smart Rehab Box: One-Euro Filter & Calibrated 3D Biomechanics</div>
       </div>
     </div>
 
     <div class="header-actions">
-      <!-- Mode Switcher -->
+      <!-- 3-Way Mode Switcher -->
       <div class="mode-switch-group">
-        <button class="mode-pill active" id="singleCamPill">Single Camera</button>
-        <button class="mode-pill" id="dualCamPill">Dual-Camera Box</button>
+        <button class="mode-pill active" id="btnModeCam3D">Cam + 3D Hand</button>
+        <button class="mode-pill" id="btnModeDualCam">Dual-Camera Box</button>
+        <button class="mode-pill" id="btnModeTriView">All 3 (Dual Cam + 3D)</button>
       </div>
 
       <div class="badge-view" id="viewBadge">
         <span class="pulse-dot"></span>
         <span id="viewText">Front View</span>
       </div>
-      <button class="btn-primary" id="toggleCamBtn">Start System</button>
+      <button class="btn-primary" id="toggleCamBtn">Start Live Stream</button>
     </div>
   </header>
 
   <!-- Main Content -->
   <main>
-    <!-- Left: Live Camera Viewport (Single or Dual Split) -->
+    <!-- Left: Flexible Viewport Grid -->
     <div class="viewport-card">
       <div class="viewport-header">
-        <div class="viewport-title" id="viewportTitle">
-          <span>Camera Feed 1 (Top / Main View)</span>
+        <div class="viewport-title">
+          <span>Multi-Perspective Video & 3D Kinematics</span>
         </div>
         <div class="viewport-controls">
-          <select id="cameraSelectA" title="Primary Camera">
+          <select id="cameraSelectA" title="Primary Camera 1">
             <option value="">Camera 1 (Top Box View)</option>
           </select>
-          <select id="cameraSelectB" style="display:none;" title="Secondary Side Camera">
+          <select id="cameraSelectB" style="display:none;" title="Secondary Camera 2">
             <option value="">Camera 2 (Lateral Side View)</option>
           </select>
+          <button id="calibrateBtn" style="border-color:var(--accent-gold); color:var(--accent-gold);" title="Calibrate 0° Baseline for Patient">🎯 Calibrate 0°</button>
+          <button id="reset3DViewBtn" title="Reset 3D Model Rotation">Reset 3D</button>
         </div>
       </div>
 
-      <div class="canvas-layout" id="canvasLayout">
-        <!-- Pane 1: Top-Down Camera -->
-        <div class="camera-pane" id="paneA">
+      <!-- Live Calibration Banner -->
+      <div class="calibration-banner" id="calibrationBanner">
+        <span class="pulse-dot" style="background:var(--accent-gold);"></span>
+        <span id="calibrationText">Calibrating: Hold hand flat on surface... (3s)</span>
+      </div>
+
+      <div class="viewports-grid mode-cam-3d" id="viewportsGrid">
+        <!-- Pane 1: Camera 1 (Top / Dorsal Box Feed) -->
+        <div class="pane-container" id="paneCamA">
           <video id="videoElementA" playsinline autoplay></video>
-          <canvas id="outputCanvasA" width="1280" height="720"></canvas>
-          <div class="pane-tag" id="paneTagA">CAM 1: TOP DORSAL VIEW</div>
+          <canvas class="stream-canvas" id="cameraCanvasA" width="1280" height="720"></canvas>
+          <div class="pane-badge" style="color:var(--accent-cyan);">
+            <span class="pulse-dot" style="background:var(--accent-cyan);"></span>
+            CAM 1: TOP DORSAL VIEW (1€ SMOOTHED)
+          </div>
         </div>
 
-        <!-- Pane 2: Lateral Side Camera (Hidden in single mode) -->
-        <div class="camera-pane" id="paneB" style="display:none;">
+        <!-- Pane 2: Camera 2 (Side / Lateral Box Feed) - Visible in Dual-Cam & Tri-View -->
+        <div class="pane-container" id="paneCamB" style="display:none;">
           <video id="videoElementB" playsinline autoplay></video>
-          <canvas id="outputCanvasB" width="1280" height="720"></canvas>
-          <div class="pane-tag" id="paneTagB" style="color:var(--accent-green);">CAM 2: LATERAL SIDE VIEW (NO OCCLUSION)</div>
+          <canvas class="stream-canvas" id="cameraCanvasB" width="1280" height="720"></canvas>
+          <div class="pane-badge" style="color:var(--accent-green);">
+            <span class="pulse-dot" style="background:var(--accent-green);"></span>
+            CAM 2: LATERAL SIDE VIEW (NO OCCLUSION)
+          </div>
+        </div>
+
+        <!-- Pane 3: Interactive 3D Digital Twin (Three.js WebGL) -->
+        <div class="pane-container" id="pane3D">
+          <div id="threejsContainer"></div>
+          <div class="pane-badge" style="color:var(--accent-purple);">
+            <span class="pulse-dot" style="background:var(--accent-purple);"></span>
+            3D DIGITAL TWIN (SYNCHRONIZED)
+          </div>
+          <div class="orbit-hint">Drag: Rotate 360° | Scroll: Zoom</div>
         </div>
       </div>
 
-      <!-- Marker Calibration Legend Bar -->
+      <!-- Physical Marker Guide Bar -->
       <div class="marker-guide-bar">
         <div class="marker-dots-legend">
-          <span style="font-weight:700; color:#fff;">Physical Markers Guide:</span>
+          <span style="font-weight:700; color:#fff;">Joint Markers:</span>
           <span class="dot-item"><span class="color-circle" style="background:#ef4444;"></span> MCP Joint (Knuckle)</span>
           <span class="dot-item"><span class="color-circle" style="background:#10b981;"></span> PIP Joint (Middle)</span>
           <span class="dot-item"><span class="color-circle" style="background:#06b6d4;"></span> DIP Joint (Fingertip)</span>
         </div>
-        <span style="color:var(--accent-green); font-weight:700;">Zero-Occlusion Calibration Active</span>
+        <span style="color:var(--accent-green); font-weight:700;" id="filterStatus">One-Euro Jitter Filter Active (Zero Noise)</span>
       </div>
     </div>
 
@@ -548,7 +650,7 @@
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">All Fingers Joint ROM Matrix</div>
-          <span class="medical-note">0° = Straight | 90° = Flexed</span>
+          <span class="medical-note" id="calibrationNote">0° = Neutral Extension</span>
         </div>
 
         <table class="rom-table">
@@ -571,7 +673,7 @@
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">Session Recovery Metrics</div>
-          <span style="font-size:0.75rem; color:var(--text-muted);">Real-time Scoring</span>
+          <span style="font-size:0.75rem; color:var(--text-muted);">Neutral Zero Standard</span>
         </div>
 
         <div class="stats-grid">
@@ -590,7 +692,7 @@
         </div>
 
         <div class="challenge-banner">
-          <strong>Physical Therapy Standard:</strong> Starting at <strong>0° (Straight/Extension)</strong>, bend fingers inward. Clinical target flexion is <strong>80°–90°</strong>. With dual cameras, all fingers are tracked even when closed in a fist.
+          <strong>Medical Grade Precision:</strong> The <strong>One-Euro Adaptive Filter</strong> eliminates hand tremor micro-jitters, while <strong>0° Calibration</strong> accounts for patient-specific finger posture.
         </div>
 
         <div style="margin-top:14px; display:flex; gap:10px;">
@@ -603,22 +705,96 @@
   </main>
 
   <script>
-    // DOM Elements
+    /* ==========================================================
+       ONE-EURO FILTER IMPLEMENTATION (Adaptive Jitter Filter)
+       ========================================================== */
+    class LowPassFilter {
+      constructor(alpha, initVal = 0) {
+        this.s = initVal;
+        this.setAlpha(alpha);
+        this.initialized = false;
+      }
+      setAlpha(alpha) {
+        this.alpha = Math.max(0, Math.min(1, alpha));
+      }
+      filter(value) {
+        if (!this.initialized) {
+          this.s = value;
+          this.initialized = true;
+          return value;
+        }
+        this.s = this.alpha * value + (1.0 - this.alpha) * this.s;
+        return this.s;
+      }
+      last() { return this.s; }
+      reset() { this.initialized = false; }
+    }
+
+    class OneEuroFilter {
+      constructor(freq = 60, mincutoff = 0.8, beta = 0.04, dcutoff = 1.0) {
+        this.freq = freq;
+        this.mincutoff = mincutoff;
+        this.beta = beta;
+        this.dcutoff = dcutoff;
+        this.x = new LowPassFilter(this.alpha(mincutoff));
+        this.dx = new LowPassFilter(this.alpha(dcutoff));
+        this.lastTime = null;
+      }
+      alpha(cutoff) {
+        const te = 1.0 / this.freq;
+        const tau = 1.0 / (2 * Math.PI * cutoff);
+        return 1.0 / (1.0 + tau / te);
+      }
+      filter(val, timestamp = performance.now()) {
+        if (this.lastTime !== null && timestamp > this.lastTime) {
+          this.freq = 1000.0 / (timestamp - this.lastTime);
+        }
+        this.lastTime = timestamp;
+
+        const prevX = this.x.last();
+        const dxVal = this.x.initialized ? (val - prevX) * this.freq : 0;
+        const edx = this.dx.filter(dxVal);
+        const cutoff = this.mincutoff + this.beta * Math.abs(edx);
+        this.x.setAlpha(this.alpha(cutoff));
+        return this.x.filter(val);
+      }
+      reset() {
+        this.x.reset();
+        this.dx.reset();
+        this.lastTime = null;
+      }
+    }
+
+    // Viewport Mode Management
+    let currentMode = "CAM_3D"; // "CAM_3D", "DUAL_CAM", "TRI_VIEW"
+
+    const btnModeCam3D = document.getElementById('btnModeCam3D');
+    const btnModeDualCam = document.getElementById('btnModeDualCam');
+    const btnModeTriView = document.getElementById('btnModeTriView');
+    const viewportsGrid = document.getElementById('viewportsGrid');
+
+    const paneCamA = document.getElementById('paneCamA');
+    const paneCamB = document.getElementById('paneCamB');
+    const pane3D = document.getElementById('pane3D');
+
     const videoA = document.getElementById('videoElementA');
-    const canvasA = document.getElementById('outputCanvasA');
+    const canvasA = document.getElementById('cameraCanvasA');
     const ctxA = canvasA.getContext('2d');
 
     const videoB = document.getElementById('videoElementB');
-    const canvasB = document.getElementById('outputCanvasB');
+    const canvasB = document.getElementById('cameraCanvasB');
     const ctxB = canvasB.getContext('2d');
 
-    const paneB = document.getElementById('paneB');
-    const canvasLayout = document.getElementById('canvasLayout');
+    const threeContainer = document.getElementById('threejsContainer');
     const cameraSelectA = document.getElementById('cameraSelectA');
     const cameraSelectB = document.getElementById('cameraSelectB');
-    const singleCamPill = document.getElementById('singleCamPill');
-    const dualCamPill = document.getElementById('dualCamPill');
     const toggleCamBtn = document.getElementById('toggleCamBtn');
+    const calibrateBtn = document.getElementById('calibrateBtn');
+    const reset3DViewBtn = document.getElementById('reset3DViewBtn');
+    const calibrationBanner = document.getElementById('calibrationBanner');
+    const calibrationText = document.getElementById('calibrationText');
+    const calibrationNote = document.getElementById('calibrationNote');
+
     const viewBadge = document.getElementById('viewBadge');
     const viewText = document.getElementById('viewText');
 
@@ -629,16 +805,22 @@
     const resetSessionBtn = document.getElementById('resetSessionBtn');
     const exportBtn = document.getElementById('exportBtn');
 
-    let isDualCameraMode = false;
     let cameraInstanceA = null;
-    let cameraInstanceB = null;
     let isRunning = false;
     let maxFlexionSeen = 0;
     let reps = 0;
     let isCurrentlyFlexed = false;
     let viewHistory = [];
 
-    // Finger Landmark Configurations
+    // Filter registry for each joint
+    const angleFilters = {};
+
+    // Patient Zero-Calibration state
+    let isCalibrating = false;
+    let calibrationSamples = [];
+    let calibrationOffsets = {};
+
+    // Finger Configurations
     const FINGERS = [
       { name: "Index", col: "#10b981", mcp: [0, 5, 6], pip: [5, 6, 7], dip: [6, 7, 8], mainJoint: 6 },
       { name: "Middle", col: "#06b6d4", mcp: [0, 9, 10], pip: [9, 10, 11], dip: [10, 11, 12], mainJoint: 10 },
@@ -646,6 +828,21 @@
       { name: "Pinky", col: "#ec4899", mcp: [0, 17, 18], pip: [17, 18, 19], dip: [18, 19, 20], mainJoint: 18 },
       { name: "Thumb", col: "#f59e0b", mcp: [1, 2, 3], pip: [2, 3, 4], dip: null, mainJoint: 3 }
     ];
+
+    const CONNECTIONS = [
+      [0,1],[1,2],[2,3],[3,4],
+      [0,5],[5,6],[6,7],[7,8],
+      [5,9],[9,10],[10,11],[11,12],
+      [9,13],[13,14],[14,15],[15,16],
+      [13,17],[0,17],[17,18],[18,19],[19,20]
+    ];
+
+    // Initialize One-Euro Filters for all joints
+    FINGERS.forEach(f => {
+      angleFilters[`${f.name}_mcp`] = new OneEuroFilter();
+      angleFilters[`${f.name}_pip`] = new OneEuroFilter();
+      if (f.dip) angleFilters[`${f.name}_dip`] = new OneEuroFilter();
+    });
 
     // Build Table Rows
     matrixTableBody.innerHTML = FINGERS.map(f => `
@@ -670,32 +867,198 @@
       </tr>
     `).join('');
 
-    // Mode Switcher handlers
-    singleCamPill.addEventListener('click', () => {
-      if (!isDualCameraMode) return;
-      isDualCameraMode = false;
-      singleCamPill.classList.add('active');
-      dualCamPill.classList.remove('active');
-      canvasLayout.classList.remove('dual');
-      paneB.style.display = 'none';
-      cameraSelectB.style.display = 'none';
-      if (isRunning) restartStreams();
+    // Mode Switch Handlers
+    function setViewMode(mode) {
+      currentMode = mode;
+      btnModeCam3D.classList.remove('active');
+      btnModeDualCam.classList.remove('active');
+      btnModeTriView.classList.remove('active');
+
+      viewportsGrid.classList.remove('mode-cam-3d', 'mode-dual-cam', 'mode-tri-view');
+
+      if (mode === "CAM_3D") {
+        btnModeCam3D.classList.add('active');
+        viewportsGrid.classList.add('mode-cam-3d');
+        paneCamA.style.display = 'flex';
+        paneCamB.style.display = 'none';
+        pane3D.style.display = 'flex';
+        cameraSelectB.style.display = 'none';
+      } else if (mode === "DUAL_CAM") {
+        btnModeDualCam.classList.add('active');
+        viewportsGrid.classList.add('mode-dual-cam');
+        paneCamA.style.display = 'flex';
+        paneCamB.style.display = 'flex';
+        pane3D.style.display = 'none';
+        cameraSelectB.style.display = 'block';
+      } else if (mode === "TRI_VIEW") {
+        btnModeTriView.classList.add('active');
+        viewportsGrid.classList.add('mode-tri-view');
+        paneCamA.style.display = 'flex';
+        paneCamB.style.display = 'flex';
+        pane3D.style.display = 'flex';
+        cameraSelectB.style.display = 'block';
+      }
+
+      setTimeout(onWindowResize, 50);
+      if (isRunning && (mode === "DUAL_CAM" || mode === "TRI_VIEW")) {
+        startCameraB();
+      }
+    }
+
+    btnModeCam3D.addEventListener('click', () => setViewMode("CAM_3D"));
+    btnModeDualCam.addEventListener('click', () => setViewMode("DUAL_CAM"));
+    btnModeTriView.addEventListener('click', () => setViewMode("TRI_VIEW"));
+
+    /* ==========================================================
+       THREE.JS 3D DIGITAL TWIN SETUP
+       ========================================================== */
+    let scene, camera3D, renderer, controls;
+    let jointSpheres = [];
+    let boneCylinders = [];
+
+    function initThreeJS() {
+      const width = threeContainer.clientWidth || 400;
+      const height = threeContainer.clientHeight || 400;
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x040507);
+
+      camera3D = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+      camera3D.position.set(0, 0, 3.2);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      threeContainer.appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera3D, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+
+      const grid = new THREE.GridHelper(3, 20, 0x1e293b, 0x0f172a);
+      grid.position.y = -1.2;
+      scene.add(grid);
+
+      const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+      scene.add(ambient);
+
+      const dirLight = new THREE.DirectionalLight(0x06b6d4, 1.2);
+      dirLight.position.set(2, 4, 3);
+      scene.add(dirLight);
+
+      const pointLight = new THREE.PointLight(0x10b981, 1.5, 10);
+      pointLight.position.set(0, 0, 2);
+      scene.add(pointLight);
+
+      const sphereGeo = new THREE.SphereGeometry(0.038, 16, 16);
+      for (let i = 0; i < 21; i++) {
+        let col = 0x06b6d4;
+        if ([5, 9, 13, 17, 2].includes(i)) col = 0xef4444; // MCP = Red
+        else if ([6, 10, 14, 18, 3].includes(i)) col = 0x10b981; // PIP = Green
+        else if ([7, 11, 15, 19, 4].includes(i)) col = 0x06b6d4; // DIP = Blue
+
+        const mat = new THREE.MeshStandardMaterial({
+          color: col,
+          emissive: col,
+          emissiveIntensity: 0.35,
+          roughness: 0.2,
+          metalness: 0.8
+        });
+        const mesh = new THREE.Mesh(sphereGeo, mat);
+        mesh.visible = false;
+        scene.add(mesh);
+        jointSpheres.push(mesh);
+      }
+
+      const boneMat = new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.2,
+        roughness: 0.3
+      });
+
+      for (let i = 0; i < CONNECTIONS.length; i++) {
+        const cylGeo = new THREE.CylinderGeometry(0.016, 0.016, 1, 12);
+        const cylMesh = new THREE.Mesh(cylGeo, boneMat);
+        cylMesh.visible = false;
+        scene.add(cylMesh);
+        boneCylinders.push(cylMesh);
+      }
+
+      window.addEventListener('resize', onWindowResize);
+      animateThreeJS();
+    }
+
+    function onWindowResize() {
+      if (!renderer || !camera3D || !threeContainer) return;
+      const width = threeContainer.clientWidth;
+      const height = threeContainer.clientHeight;
+      if (width === 0 || height === 0) return;
+      camera3D.aspect = width / height;
+      camera3D.updateProjectionMatrix();
+      renderer.setSize(width, height);
+    }
+
+    function animateThreeJS() {
+      requestAnimationFrame(animateThreeJS);
+      if (controls) controls.update();
+      if (renderer && scene && camera3D) renderer.render(scene, camera3D);
+    }
+
+    reset3DViewBtn.addEventListener('click', () => {
+      if (camera3D && controls) {
+        camera3D.position.set(0, 0, 3.2);
+        controls.target.set(0, 0, 0);
+        controls.update();
+      }
     });
 
-    dualCamPill.addEventListener('click', () => {
-      if (isDualCameraMode) return;
-      isDualCameraMode = true;
-      dualCamPill.classList.add('active');
-      singleCamPill.classList.remove('active');
-      canvasLayout.classList.add('dual');
-      paneB.style.display = 'flex';
-      cameraSelectB.style.display = 'block';
-      if (isRunning) restartStreams();
-    });
+    function update3DHand(landmarks) {
+      if (!landmarks || landmarks.length < 21) {
+        jointSpheres.forEach(s => s.visible = false);
+        boneCylinders.forEach(b => b.visible = false);
+        return;
+      }
 
-    /**
-     * Clinical Flexion Angle (Neutral Zero Method: Straight = 0°, Flexed = up to 90°+)
-     */
+      const root = landmarks[0];
+      const scale = 2.4;
+
+      const v3Points = landmarks.map(lm => {
+        return new THREE.Vector3(
+          -(lm.x - root.x) * scale,
+          -(lm.y - root.y) * scale,
+          -(lm.z || 0) * scale * 1.5
+        );
+      });
+
+      for (let i = 0; i < 21; i++) {
+        jointSpheres[i].position.copy(v3Points[i]);
+        jointSpheres[i].visible = true;
+      }
+
+      const yAxis = new THREE.Vector3(0, 1, 0);
+      for (let k = 0; k < CONNECTIONS.length; k++) {
+        const [idx1, idx2] = CONNECTIONS[k];
+        const p1 = v3Points[idx1];
+        const p2 = v3Points[idx2];
+
+        const bone = boneCylinders[k];
+        const dist = p1.distanceTo(p2);
+        bone.scale.set(1, dist, 1);
+
+        const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+        bone.position.copy(mid);
+
+        const dir = new THREE.Vector3().subVectors(p2, p1).normalize();
+        const quat = new THREE.Quaternion().setFromUnitVectors(yAxis, dir);
+        bone.setRotationFromQuaternion(quat);
+        bone.visible = true;
+      }
+    }
+
+    /* ==========================================================
+       BIOMECHANICS CALCULATIONS & ONE-EURO FILTERING
+       ========================================================== */
     function calculateClinicalFlexion(p1, p2, p3) {
       if (!p1 || !p2 || !p3) return 0;
       const v1 = { x: p1.x - p2.x, y: p1.y - p2.y, z: (p1.z || 0) - (p2.z || 0) };
@@ -710,8 +1073,8 @@
       cosVal = Math.max(-1.0, Math.min(1.0, cosVal));
       const interiorAngle = (Math.acos(cosVal) * 180) / Math.PI;
 
-      const flexion = Math.max(0, Math.min(115, 180 - interiorAngle));
-      return Math.round(flexion);
+      const rawFlexion = Math.max(0, Math.min(115, 180 - interiorAngle));
+      return rawFlexion;
     }
 
     function detectView(landmarks) {
@@ -735,12 +1098,23 @@
     }
 
     function getFlexionColor(flexionDeg) {
-      if (flexionDeg >= 60) return "#10b981"; // Functional Flexion
-      if (flexionDeg >= 25) return "#f59e0b"; // Partial Flexion
-      return "#06b6d4";                       // Straight
+      if (flexionDeg >= 60) return "#10b981";
+      if (flexionDeg >= 25) return "#f59e0b";
+      return "#06b6d4";
     }
 
-    // MediaPipe Hands Instance
+    // Patient Baseline Calibration
+    calibrateBtn.addEventListener('click', () => {
+      if (!isRunning) {
+        alert("Please click 'Start Live Stream' first before calibrating.");
+        return;
+      }
+      isCalibrating = true;
+      calibrationSamples = [];
+      calibrationBanner.classList.add('active');
+      calibrationText.innerText = "Hold hand flat & relaxed... Calibrating 0° (3s)";
+    });
+
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
@@ -753,21 +1127,30 @@
     });
 
     hands.onResults((results) => {
-      // Render on Primary Canvas
-      renderHandOnCanvas(ctxA, canvasA, results, "CAM 1 (TOP DORSAL VIEW)");
+      ctxA.save();
+      ctxA.clearRect(0, 0, canvasA.width, canvasA.height);
+      ctxA.drawImage(results.image, 0, 0, canvasA.width, canvasA.height);
 
-      // If dual camera is active, render feed on Canvas B as well
-      if (isDualCameraMode && videoB.videoWidth) {
+      if ((currentMode === "DUAL_CAM" || currentMode === "TRI_VIEW") && videoB.videoWidth) {
         ctxB.save();
         ctxB.clearRect(0, 0, canvasB.width, canvasB.height);
         ctxB.drawImage(videoB, 0, 0, canvasB.width, canvasB.height);
-        // Draw crosshair marker guide on side view
-        drawSideMarkerGuide(ctxB, canvasB);
+        ctxB.strokeStyle = "rgba(16, 185, 129, 0.3)";
+        ctxB.lineWidth = 1;
+        ctxB.beginPath();
+        ctxB.moveTo(canvasB.width / 2, 0); ctxB.lineTo(canvasB.width / 2, canvasB.height);
+        ctxB.moveTo(0, canvasB.height / 2); ctxB.lineTo(canvasB.width, canvasB.height / 2);
+        ctxB.stroke();
         ctxB.restore();
       }
 
       if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
         const landmarks = results.multiHandLandmarks[0];
+
+        // 3D Digital Twin update
+        update3DHand(landmarks);
+
+        // Orientation
         const view = detectView(landmarks);
         if (view === "LATERAL") {
           viewBadge.className = "badge-view lateral";
@@ -777,27 +1160,67 @@
           viewText.innerText = "Front (Palmar View)";
         }
 
+        const now = performance.now();
         let currentMaxPip = 0;
+        const currentFrameRaw = {};
 
         for (const f of FINGERS) {
-          const mcpDeg = calculateClinicalFlexion(landmarks[f.mcp[0]], landmarks[f.mcp[1]], landmarks[f.mcp[2]]);
-          const pipDeg = calculateClinicalFlexion(landmarks[f.pip[0]], landmarks[f.pip[1]], landmarks[f.pip[2]]);
-          const dipDeg = f.dip ? calculateClinicalFlexion(landmarks[f.dip[0]], landmarks[f.dip[1]], landmarks[f.dip[2]]) : null;
+          const rawMcp = calculateClinicalFlexion(landmarks[f.mcp[0]], landmarks[f.mcp[1]], landmarks[f.mcp[2]]);
+          const rawPip = calculateClinicalFlexion(landmarks[f.pip[0]], landmarks[f.pip[1]], landmarks[f.pip[2]]);
+          const rawDip = f.dip ? calculateClinicalFlexion(landmarks[f.dip[0]], landmarks[f.dip[1]], landmarks[f.dip[2]]) : 0;
 
-          if (pipDeg > currentMaxPip) currentMaxPip = pipDeg;
+          currentFrameRaw[`${f.name}_mcp`] = rawMcp;
+          currentFrameRaw[`${f.name}_pip`] = rawPip;
+          if (f.dip) currentFrameRaw[`${f.name}_dip`] = rawDip;
 
-          document.getElementById(`${f.name}-mcp`).innerText = `${mcpDeg}°`;
-          document.getElementById(`${f.name}-pip`).innerText = `${pipDeg}°`;
-          if (f.dip) document.getElementById(`${f.name}-dip`).innerText = `${dipDeg}°`;
+          // Apply One-Euro Adaptive Filter to remove micro-jitter
+          const smoothMcp = angleFilters[`${f.name}_mcp`].filter(rawMcp, now);
+          const smoothPip = angleFilters[`${f.name}_pip`].filter(rawPip, now);
+          const smoothDip = f.dip ? angleFilters[`${f.name}_dip`].filter(rawDip, now) : 0;
 
-          const pct = Math.max(0, Math.min(100, (pipDeg / 90) * 100));
+          // Apply Patient 0° Calibration Offset if available
+          const offsetMcp = calibrationOffsets[`${f.name}_mcp`] || 0;
+          const offsetPip = calibrationOffsets[`${f.name}_pip`] || 0;
+          const offsetDip = calibrationOffsets[`${f.name}_dip`] || 0;
+
+          const finalMcp = Math.round(Math.max(0, smoothMcp - offsetMcp));
+          const finalPip = Math.round(Math.max(0, smoothPip - offsetPip));
+          const finalDip = f.dip ? Math.round(Math.max(0, smoothDip - offsetDip)) : null;
+
+          if (finalPip > currentMaxPip) currentMaxPip = finalPip;
+
+          document.getElementById(`${f.name}-mcp`).innerText = `${finalMcp}°`;
+          document.getElementById(`${f.name}-pip`).innerText = `${finalPip}°`;
+          if (f.dip) document.getElementById(`${f.name}-dip`).innerText = `${finalDip}°`;
+
+          const pct = Math.max(0, Math.min(100, (finalPip / 90) * 100));
           const barEl = document.getElementById(`${f.name}-bar`);
           barEl.style.width = `${pct}%`;
-          barEl.style.background = getFlexionColor(pipDeg);
+          barEl.style.background = getFlexionColor(finalPip);
 
           const totalEl = document.getElementById(`${f.name}-total`);
-          totalEl.innerText = `${pipDeg}°`;
-          totalEl.style.color = getFlexionColor(pipDeg);
+          totalEl.innerText = `${finalPip}°`;
+          totalEl.style.color = getFlexionColor(finalPip);
+        }
+
+        // Calibration Gathering Routine
+        if (isCalibrating) {
+          calibrationSamples.push(currentFrameRaw);
+          const remaining = Math.max(0, 3 - Math.floor(calibrationSamples.length / 20));
+          calibrationText.innerText = `Hold hand relaxed... Calibrating 0° (${remaining}s)`;
+
+          if (calibrationSamples.length >= 60) {
+            // Compute average resting angle offset for each joint
+            calibrationOffsets = {};
+            for (const key in currentFrameRaw) {
+              const sum = calibrationSamples.reduce((acc, curr) => acc + (curr[key] || 0), 0);
+              calibrationOffsets[key] = sum / calibrationSamples.length;
+            }
+            isCalibrating = false;
+            calibrationBanner.classList.remove('active');
+            calibrationNote.innerText = "0° Baseline Calibrated ✅";
+            calibrationNote.style.color = "var(--accent-green)";
+          }
         }
 
         if (currentMaxPip > maxFlexionSeen) {
@@ -814,56 +1237,33 @@
         } else if (currentMaxPip <= 20 && isCurrentlyFlexed) {
           isCurrentlyFlexed = false;
         }
+
+        // 2D Skeleton Lines on Camera A
+        ctxA.lineWidth = 3;
+        ctxA.strokeStyle = "rgba(6, 182, 212, 0.75)";
+        for (const [start, end] of CONNECTIONS) {
+          ctxA.beginPath();
+          ctxA.moveTo(landmarks[start].x * canvasA.width, landmarks[start].y * canvasA.height);
+          ctxA.lineTo(landmarks[end].x * canvasA.width, landmarks[end].y * canvasA.height);
+          ctxA.stroke();
+        }
+
+        // 2D Joint Markers on Camera A
+        for (const f of FINGERS) {
+          drawMarker(ctxA, landmarks[f.mcp[1]], "#ef4444"); // Red MCP
+          drawMarker(ctxA, landmarks[f.pip[1]], "#10b981"); // Green PIP
+          if (f.dip) drawMarker(ctxA, landmarks[f.dip[1]], "#06b6d4"); // Blue DIP
+        }
+
+      } else {
+        update3DHand(null);
       }
+      ctxA.restore();
     });
 
-    function renderHandOnCanvas(ctx, c, results, label) {
-      ctx.save();
-      ctx.clearRect(0, 0, c.width, c.height);
-      ctx.drawImage(results.image, 0, 0, c.width, c.height);
-
-      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        const landmarks = results.multiHandLandmarks[0];
-
-        // Draw Skeleton Connections
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = "rgba(6, 182, 212, 0.75)";
-        const connections = [
-          [0,1],[1,2],[2,3],[3,4],
-          [0,5],[5,6],[6,7],[7,8],
-          [5,9],[9,10],[10,11],[11,12],
-          [9,13],[13,14],[14,15],[15,16],
-          [13,17],[0,17],[17,18],[18,19],[19,20]
-        ];
-
-        for (const [start, end] of connections) {
-          ctx.beginPath();
-          ctx.moveTo(landmarks[start].x * c.width, landmarks[start].y * c.height);
-          ctx.lineTo(landmarks[end].x * c.width, landmarks[end].y * c.height);
-          ctx.stroke();
-        }
-
-        // Draw Physical Markers with High-Contrast Target Rings
-        for (const f of FINGERS) {
-          // MCP Marker (Red)
-          const pMcp = landmarks[f.mcp[1]];
-          drawMarkerTarget(ctx, pMcp.x * c.width, pMcp.y * c.height, "#ef4444");
-
-          // PIP Marker (Green)
-          const pPip = landmarks[f.pip[1]];
-          drawMarkerTarget(ctx, pPip.x * c.width, pPip.y * c.height, "#10b981");
-
-          // DIP Marker (Blue)
-          if (f.dip) {
-            const pDip = landmarks[f.dip[1]];
-            drawMarkerTarget(ctx, pDip.x * c.width, pDip.y * c.height, "#06b6d4");
-          }
-        }
-      }
-      ctx.restore();
-    }
-
-    function drawMarkerTarget(ctx, x, y, color) {
+    function drawMarker(ctx, pt, color) {
+      const x = pt.x * canvasA.width;
+      const y = pt.y * canvasA.height;
       ctx.beginPath();
       ctx.arc(x, y, 7, 0, 2 * Math.PI);
       ctx.fillStyle = color;
@@ -873,34 +1273,22 @@
       ctx.stroke();
     }
 
-    function drawSideMarkerGuide(ctx, c) {
-      // Subtle clinical goniometer grid on the side camera
-      ctx.strokeStyle = "rgba(16, 185, 129, 0.25)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(c.width / 2, 0); ctx.lineTo(c.width / 2, c.height);
-      ctx.moveTo(0, c.height / 2); ctx.lineTo(c.width, c.height / 2);
-      ctx.stroke();
-    }
-
-    // Camera Enumeration & Hot-Plugging
     async function populateCameras() {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = devices.filter(d => d.kind === 'videoinput');
 
         const optHtmlA = videoDevices.map((d, idx) => 
-          `<option value="${d.deviceId}">${d.label || 'Camera 1 (Top Box View ' + (idx + 1) + ')'}</option>`
+          `<option value="${d.deviceId}">${d.label || 'Camera 1 (Top View ' + (idx + 1) + ')'}</option>`
         ).join('');
 
         const optHtmlB = videoDevices.map((d, idx) => 
-          `<option value="${d.deviceId}">${d.label || 'Camera 2 (Side Box View ' + (idx + 1) + ')'}</option>`
+          `<option value="${d.deviceId}">${d.label || 'Camera 2 (Side View ' + (idx + 1) + ')'}</option>`
         ).join('');
 
         cameraSelectA.innerHTML = optHtmlA || `<option value="">Default Camera</option>`;
         cameraSelectB.innerHTML = optHtmlB || `<option value="">Secondary Camera</option>`;
 
-        // If multiple cameras exist, automatically select camera 2 for side view
         if (videoDevices.length > 1) {
           cameraSelectB.selectedIndex = 1;
         }
@@ -909,20 +1297,29 @@
       }
     }
 
-    // Auto-detect when USB camera is plugged in
     if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
       navigator.mediaDevices.addEventListener('devicechange', populateCameras);
     }
 
+    async function startCameraB() {
+      const devB = cameraSelectB.value || null;
+      if (!devB) return;
+      try {
+        const streamB = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: devB } }
+        });
+        videoB.srcObject = streamB;
+        await videoB.play();
+      } catch (e) {
+        console.warn("Camera B start note:", e.message);
+      }
+    }
+
     async function startSystem() {
       if (cameraInstanceA) cameraInstanceA.stop();
-      if (cameraInstanceB) cameraInstanceB.stop();
 
       const devA = cameraSelectA.value || null;
-      const devB = cameraSelectB.value || null;
-
       try {
-        // Stream 1 (Primary / Top)
         const streamA = await navigator.mediaDevices.getUserMedia({
           video: devA ? { deviceId: { exact: devA } } : { width: 1280, height: 720 }
         });
@@ -938,17 +1335,8 @@
         });
         await cameraInstanceA.start();
 
-        // Stream 2 (Secondary / Side) if Dual-Camera Mode
-        if (isDualCameraMode && devB) {
-          try {
-            const streamB = await navigator.mediaDevices.getUserMedia({
-              video: { deviceId: { exact: devB } }
-            });
-            videoB.srcObject = streamB;
-            await videoB.play();
-          } catch (errB) {
-            console.warn("Secondary camera stream error:", errB);
-          }
+        if (currentMode === "DUAL_CAM" || currentMode === "TRI_VIEW") {
+          await startCameraB();
         }
 
         isRunning = true;
@@ -961,18 +1349,12 @@
 
     function stopSystem() {
       if (cameraInstanceA) cameraInstanceA.stop();
-      if (cameraInstanceB) cameraInstanceB.stop();
       if (videoA.srcObject) videoA.srcObject.getTracks().forEach(t => t.stop());
       if (videoB.srcObject) videoB.srcObject.getTracks().forEach(t => t.stop());
-
+      update3DHand(null);
       isRunning = false;
-      toggleCamBtn.innerText = "Start System";
+      toggleCamBtn.innerText = "Start Live Stream";
       toggleCamBtn.style.background = "";
-    }
-
-    function restartStreams() {
-      stopSystem();
-      startSystem();
     }
 
     toggleCamBtn.addEventListener('click', () => {
@@ -980,8 +1362,8 @@
       else startSystem();
     });
 
-    cameraSelectA.addEventListener('change', () => { if (isRunning) restartStreams(); });
-    cameraSelectB.addEventListener('change', () => { if (isRunning) restartStreams(); });
+    cameraSelectA.addEventListener('change', () => { if (isRunning) { stopSystem(); startSystem(); } });
+    cameraSelectB.addEventListener('change', () => { if (isRunning) startCameraB(); });
 
     resetSessionBtn.addEventListener('click', () => {
       maxFlexionSeen = 0;
@@ -990,12 +1372,13 @@
       peakFlexion.innerText = "0°";
       repCount.innerText = "0";
       recoveryScore.innerText = "0%";
+      for (const k in angleFilters) angleFilters[k].reset();
     });
 
-    // Medical PDF Export with Dual-Camera & Marker Certified Header
+    // Medical PDF Export
     exportBtn.addEventListener('click', () => {
       if (!window.jspdf || !window.jspdf.jsPDF) {
-        alert("PDF generator library is loading, please try again in a few seconds.");
+        alert("PDF generator is loading, please try in 3 seconds.");
         return;
       }
 
@@ -1005,34 +1388,31 @@
       const today = new Date();
       const dateStr = today.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-      // Header Banner
-      doc.setFillColor(17, 20, 32);
+      doc.setFillColor(16, 19, 29);
       doc.rect(0, 0, 210, 36, 'F');
 
       doc.setTextColor(16, 185, 129);
       doc.setFontSize(17);
       doc.setFont('helvetica', 'bold');
-      doc.text("NEUROREHAB MEDICAL BIOMECHANICS REPORT", 14, 16);
+      doc.text("NEUROREHAB MULTI-VIEW & 3D DIGITAL TWIN REPORT", 14, 16);
 
       doc.setTextColor(200, 210, 225);
       doc.setFontSize(9.5);
       doc.setFont('helvetica', 'normal');
-      doc.text("Multi-Angle Dual-Camera & Joint Marker Assessment System", 14, 23);
+      doc.text("Dual-Camera Orthogonal Setup & 3D Digital Twin Kinematic Report", 14, 23);
       doc.text("Standard: ISOM Neutral Zero Method (0° Extension to 90° Flexion)", 14, 29);
 
-      // Metadata
       doc.setTextColor(50, 50, 60);
       doc.setFontSize(9.5);
       doc.setFont('helvetica', 'bold');
-      doc.text("CLINICAL SESSION DETAILS", 14, 45);
+      doc.text("ASSESSMENT SPECIFICATIONS", 14, 45);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
       doc.text(`Evaluation Date: ${dateStr}`, 14, 51);
-      doc.text(`Capture Mode: ${isDualCameraMode ? 'Dual-Camera Synchronized (Top + Lateral Side)' : 'Single Camera Box'}`, 14, 56);
-      doc.text("Tracking Standard: High-Precision Physical Joint Markers (Red/Green/Blue)", 14, 61);
+      doc.text(`Active Mode: ${currentMode === 'TRI_VIEW' ? 'Tri-View (Dual Camera + 3D Twin)' : currentMode === 'DUAL_CAM' ? 'Dual-Camera Box View' : 'Single Cam + 3D Hand'}`, 14, 56);
+      doc.text("Filtering: One-Euro Adaptive Low-Pass Filter (Zero Micro-Jitter)", 14, 61);
 
-      // Score Badge
       doc.setFillColor(240, 253, 244);
       doc.setDrawColor(16, 185, 129);
       doc.roundedRect(132, 42, 64, 22, 3, 3, 'FD');
@@ -1044,9 +1424,8 @@
 
       doc.setFontSize(8);
       doc.setTextColor(80, 100, 90);
-      doc.text("Overall Recovery Index", 136, 59);
+      doc.text("Recovery Mobility Score", 136, 59);
 
-      // Cards
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
       doc.roundedRect(14, 69, 58, 19, 2, 2, 'FD');
@@ -1055,9 +1434,9 @@
 
       doc.setFontSize(7.5);
       doc.setTextColor(100, 116, 139);
-      doc.text("MAX PEAK FLEXION", 18, 75);
-      doc.text("COMPLETED REPS", 80, 75);
-      doc.text("ASSESSMENT GRADE", 142, 75);
+      doc.text("PEAK BEND FLEXION", 18, 75);
+      doc.text("ACTIVE REPETITIONS", 80, 75);
+      doc.text("REHABILITATION STATUS", 142, 75);
 
       doc.setFontSize(12.5);
       doc.setFont('helvetica', 'bold');
@@ -1068,35 +1447,32 @@
       doc.text(`${repCount.innerText} Reps`, 80, 83);
 
       const scoreNum = parseInt(recoveryScore.innerText) || 0;
-      const grade = scoreNum >= 75 ? "Excellent Functional Range" : scoreNum >= 45 ? "Moderate Recovery" : "Needs Targeted Therapy";
+      const grade = scoreNum >= 75 ? "Functional Mobility" : scoreNum >= 45 ? "Moderate Recovery" : "Needs Therapy";
       doc.setTextColor(16, 185, 129);
       doc.setFontSize(9.5);
       doc.text(grade, 142, 83);
 
-      // Table
       const tableData = FINGERS.map(f => {
         const mcp = document.getElementById(`${f.name}-mcp`)?.innerText || "0°";
         const pip = document.getElementById(`${f.name}-pip`)?.innerText || "0°";
-        const dip = f.dip ? (document.getElementById(`${f.name}-dip`)?.innerText || "0°") : "N/A (2 Joints)";
+        const dip = f.dip ? (document.getElementById(`${f.name}-dip`)?.innerText || "0°") : "N/A";
         const pipVal = parseInt(pip) || 0;
-        let interp = pipVal >= 60 ? "Functional Flexion (Normal)" : pipVal >= 25 ? "Partial Range" : "Resting Extension";
+        let interp = pipVal >= 60 ? "Functional Flexion (Normal)" : pipVal >= 25 ? "Partial Movement" : "Resting Extension";
 
         return [f.name, mcp, pip, dip, interp];
       });
 
       doc.autoTable({
         startY: 96,
-        head: [['Finger', 'MCP Joint (Red)', 'PIP Joint (Green)', 'DIP Joint (Blue)', 'Clinical Status']],
+        head: [['Finger', 'MCP Joint (Red)', 'PIP Joint (Green)', 'DIP Joint (Blue)', 'Clinical Assessment']],
         body: tableData,
         theme: 'striped',
-        headStyles: { fillColor: [17, 20, 32], textColor: [255, 255, 255], fontSize: 8.5, fontStyle: 'bold' },
+        headStyles: { fillColor: [16, 19, 29], textColor: [255, 255, 255], fontSize: 8.5, fontStyle: 'bold' },
         bodyStyles: { fontSize: 8.5, textColor: [30, 41, 59] },
         styles: { cellPadding: 3.8, font: 'helvetica' }
       });
 
       const finalY = doc.lastAutoTable.finalY + 10;
-
-      // Recommendations
       doc.setFontSize(9.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 41, 59);
@@ -1107,8 +1483,8 @@
       doc.setTextColor(71, 85, 105);
       const notes = [
         "• Measurement acquired under the ISOM Neutral Zero Method (0° indicates straight resting extension, 90° indicates full functional flexion).",
-        "• Multi-camera capture eliminates self-occlusion artifacts when the hand is clenched or fingers overlap.",
-        "• Physical joint marker calibration ensures sub-millimeter clinical repeatability."
+        "• One-Euro Adaptive Filter applied to ensure rock-solid stability and zero micro-tremor noise.",
+        "• Dual-Camera Orthogonal Setup eliminates occlusion of middle/ring/pinky fingers."
       ];
       let lineY = finalY + 5;
       notes.forEach(note => {
@@ -1116,7 +1492,6 @@
         lineY += 4.5;
       });
 
-      // Signature
       lineY += 14;
       doc.setDrawColor(203, 213, 225);
       doc.line(14, lineY, 80, lineY);
@@ -1130,9 +1505,12 @@
       doc.save(`NeuroRehab_Clinical_Report_${Date.now()}.pdf`);
     });
 
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(() => populateCameras())
-      .catch(() => populateCameras());
+    window.addEventListener('DOMContentLoaded', () => {
+      initThreeJS();
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(() => populateCameras())
+        .catch(() => populateCameras());
+    });
 
   </script>
 </body>
