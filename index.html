@@ -805,8 +805,6 @@
     const resetSessionBtn = document.getElementById('resetSessionBtn');
     const exportBtn = document.getElementById('exportBtn');
 
-    let cameraInstanceA = null;
-    let cameraInstanceB = null;
     let isRunning = false;
     let maxFlexionSeen = 0;
     let reps = 0;
@@ -814,6 +812,9 @@
     let viewHistory = [];
     let hasHandA = false;
     let hasHandB = false;
+    let latestLandmarksA = null;
+    let latestLandmarksB = null;
+    let currentTrackingTarget = 'A';
 
     // Filter registry for each joint
     const angleFilters = {};
@@ -1122,25 +1123,15 @@
       calibrationText.innerText = "Hold hand flat & relaxed... Calibrating 0° (3s)";
     });
 
-    // MediaPipe Hand Detectors: Dedicated instances for Cam 1 (Top) & Cam 2 (Lateral)
-    const handsA = new Hands({
+    // Single Robust MediaPipe Hands Instance (Avoids WASM Memory Collisions)
+    const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
-    handsA.setOptions({
+    hands.setOptions({
       maxNumHands: 1,
       modelComplexity: 1,
       minDetectionConfidence: 0.65,
       minTrackingConfidence: 0.65
-    });
-
-    const handsB = new Hands({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-    });
-    handsB.setOptions({
-      maxNumHands: 1,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.55,
-      minTrackingConfidence: 0.55
     });
 
     // Helper: Draw Circular Joint Marker on specified Canvas Context
@@ -1157,7 +1148,7 @@
       ctx.stroke();
     }
 
-    // Biometrics & Angle Calculation Engine (Shared across cameras)
+    // Biometrics & Angle Calculation Engine
     function processBiometrics(landmarks) {
       const now = performance.now();
       let currentMaxPip = 0;
@@ -1244,104 +1235,156 @@
       }
     }
 
-    // Camera 1 (Top Dorsal View) Callback
-    handsA.onResults((results) => {
-      ctxA.save();
-      ctxA.clearRect(0, 0, canvasA.width, canvasA.height);
-      ctxA.drawImage(results.image, 0, 0, canvasA.width, canvasA.height);
+    // MediaPipe Result Handler (Routes results to Camera A or Camera B)
+    hands.onResults((results) => {
+      const hasHand = results.multiHandLandmarks && results.multiHandLandmarks.length > 0;
+      const landmarks = hasHand ? results.multiHandLandmarks[0] : null;
 
-      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        hasHandA = true;
-        const landmarks = results.multiHandLandmarks[0];
+      if (currentTrackingTarget === 'A') {
+        latestLandmarksA = landmarks;
+        hasHandA = hasHand;
 
-        // 3D Digital Twin update & Biometrics
-        update3DHand(landmarks);
-        processBiometrics(landmarks);
+        if (hasHand) {
+          update3DHand(landmarks);
+          processBiometrics(landmarks);
 
-        // Perspective view detection
-        const view = detectView(landmarks);
-        if (view === "LATERAL") {
-          viewBadge.className = "badge-view lateral";
-          viewText.innerText = "Lateral (Side View)";
-        } else {
-          viewBadge.className = "badge-view";
-          viewText.innerText = "Front (Palmar View)";
-        }
-
-        // 2D Skeleton Lines on Camera A (Cyan Neon)
-        ctxA.lineWidth = 3;
-        ctxA.strokeStyle = "rgba(6, 182, 212, 0.85)";
-        for (const [start, end] of CONNECTIONS) {
-          ctxA.beginPath();
-          ctxA.moveTo(landmarks[start].x * canvasA.width, landmarks[start].y * canvasA.height);
-          ctxA.lineTo(landmarks[end].x * canvasA.width, landmarks[end].y * canvasA.height);
-          ctxA.stroke();
-        }
-
-        // 2D Joint Markers on Camera A (Knuckle MCP, PIP, DIP)
-        for (const f of FINGERS) {
-          drawMarker(ctxA, canvasA, landmarks[f.mcp[1]], "#ef4444"); // Red MCP
-          drawMarker(ctxA, canvasA, landmarks[f.pip[1]], "#10b981"); // Green PIP
-          if (f.dip) drawMarker(ctxA, canvasA, landmarks[f.dip[1]], "#06b6d4"); // Blue DIP
-        }
-      } else {
-        hasHandA = false;
-        if (!hasHandB) {
+          const view = detectView(landmarks);
+          if (view === "LATERAL") {
+            viewBadge.className = "badge-view lateral";
+            viewText.innerText = "Lateral (Side View)";
+          } else {
+            viewBadge.className = "badge-view";
+            viewText.innerText = "Front (Palmar View)";
+          }
+        } else if (!hasHandB) {
           update3DHand(null);
         }
+      } else if (currentTrackingTarget === 'B') {
+        latestLandmarksB = landmarks;
+        hasHandB = hasHand;
+
+        // If Camera 1 is occluded or not detecting, Camera 2 drives 3D Hand and Angles
+        if (hasHand && !hasHandA) {
+          update3DHand(landmarks);
+          processBiometrics(landmarks);
+        }
       }
-      ctxA.restore();
     });
 
-    // Camera 2 (Lateral Side View) Callback with Full Hand AI Tracking
-    handsB.onResults((resultsB) => {
-      ctxB.save();
-      ctxB.clearRect(0, 0, canvasB.width, canvasB.height);
-      ctxB.drawImage(resultsB.image, 0, 0, canvasB.width, canvasB.height);
+    // Draw Overlays on Camera A
+    function drawOverlayA() {
+      if (!latestLandmarksA) return;
+      // 2D Skeleton Lines (Cyan Neon)
+      ctxA.lineWidth = 3;
+      ctxA.strokeStyle = "rgba(6, 182, 212, 0.85)";
+      for (const [start, end] of CONNECTIONS) {
+        ctxA.beginPath();
+        ctxA.moveTo(latestLandmarksA[start].x * canvasA.width, latestLandmarksA[start].y * canvasA.height);
+        ctxA.lineTo(latestLandmarksA[end].x * canvasA.width, latestLandmarksA[end].y * canvasA.height);
+        ctxA.stroke();
+      }
+      // 2D Knuckle Markers
+      for (const f of FINGERS) {
+        drawMarker(ctxA, canvasA, latestLandmarksA[f.mcp[1]], "#ef4444"); // Red MCP
+        drawMarker(ctxA, canvasA, latestLandmarksA[f.pip[1]], "#10b981"); // Green PIP
+        if (f.dip) drawMarker(ctxA, canvasA, latestLandmarksA[f.dip[1]], "#06b6d4"); // Blue DIP
+      }
+    }
 
-      if (resultsB.multiHandLandmarks && resultsB.multiHandLandmarks.length > 0) {
-        hasHandB = true;
-        const landmarksB = resultsB.multiHandLandmarks[0];
-
-        // 2D Skeleton Lines on Camera B (Emerald Neon)
+    // Draw Overlays on Camera B
+    function drawOverlayB() {
+      if (latestLandmarksB) {
+        // 2D Skeleton Lines (Emerald Neon)
         ctxB.lineWidth = 3;
         ctxB.strokeStyle = "rgba(16, 185, 129, 0.9)";
         for (const [start, end] of CONNECTIONS) {
           ctxB.beginPath();
-          ctxB.moveTo(landmarksB[start].x * canvasB.width, landmarksB[start].y * canvasB.height);
-          ctxB.lineTo(landmarksB[end].x * canvasB.width, landmarksB[end].y * canvasB.height);
+          ctxB.moveTo(latestLandmarksB[start].x * canvasB.width, latestLandmarksB[start].y * canvasB.height);
+          ctxB.lineTo(latestLandmarksB[end].x * canvasB.width, latestLandmarksB[end].y * canvasB.height);
           ctxB.stroke();
         }
-
-        // 2D Joint Markers on Camera B
+        // 2D Knuckle Markers
         for (const f of FINGERS) {
-          drawMarker(ctxB, canvasB, landmarksB[f.mcp[1]], "#ef4444"); // Red MCP
-          drawMarker(ctxB, canvasB, landmarksB[f.pip[1]], "#10b981"); // Green PIP
-          if (f.dip) drawMarker(ctxB, canvasB, landmarksB[f.dip[1]], "#06b6d4"); // Blue DIP
+          drawMarker(ctxB, canvasB, latestLandmarksB[f.mcp[1]], "#ef4444"); // Red MCP
+          drawMarker(ctxB, canvasB, latestLandmarksB[f.pip[1]], "#10b981"); // Green PIP
+          if (f.dip) drawMarker(ctxB, canvasB, latestLandmarksB[f.dip[1]], "#06b6d4"); // Blue DIP
         }
-
-        // Active tracking indicator
-        ctxB.fillStyle = "rgba(16, 185, 129, 0.85)";
+        ctxB.fillStyle = "rgba(16, 185, 129, 0.9)";
         ctxB.font = "bold 13px 'Plus Jakarta Sans'";
         ctxB.fillText("CAM 2: HAND TRACKED", 16, 28);
-
-        // Failover: If Camera A view is blocked/occluded, Camera B drives the 3D Twin & Metrics
-        if (!hasHandA) {
-          update3DHand(landmarksB);
-          processBiometrics(landmarksB);
-        }
       } else {
-        hasHandB = false;
-        // Subtle scanning crosshair
-        ctxB.strokeStyle = "rgba(16, 185, 129, 0.2)";
+        // Subtle Scanning Crosshair
+        ctxB.strokeStyle = "rgba(16, 185, 129, 0.25)";
         ctxB.lineWidth = 1;
         ctxB.beginPath();
         ctxB.moveTo(canvasB.width / 2, 0); ctxB.lineTo(canvasB.width / 2, canvasB.height);
         ctxB.moveTo(0, canvasB.height / 2); ctxB.lineTo(canvasB.width, canvasB.height / 2);
         ctxB.stroke();
       }
-      ctxB.restore();
-    });
+    }
+
+    // Standby Placeholder Graphic
+    function drawPlaceholder(ctx, canvas, title, subtitle) {
+      ctx.save();
+      ctx.fillStyle = "#07090e";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#10b981";
+      ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(title, canvas.width / 2, canvas.height / 2 - 10);
+      ctx.fillStyle = "#64748b";
+      ctx.font = "500 12px 'Plus Jakarta Sans', sans-serif";
+      ctx.fillText(subtitle, canvas.width / 2, canvas.height / 2 + 16);
+      ctx.restore();
+    }
+
+    // Instant Continuous 60 FPS Render Loop (Guarantees zero blank screen)
+    function renderLoop() {
+      if (isRunning) {
+        if (videoA && videoA.readyState >= 2) {
+          ctxA.save();
+          ctxA.clearRect(0, 0, canvasA.width, canvasA.height);
+          ctxA.drawImage(videoA, 0, 0, canvasA.width, canvasA.height);
+          drawOverlayA();
+          ctxA.restore();
+        }
+        if ((currentMode === "DUAL_CAM" || currentMode === "TRI_VIEW") && videoB && videoB.readyState >= 2) {
+          ctxB.save();
+          ctxB.clearRect(0, 0, canvasB.width, canvasB.height);
+          ctxB.drawImage(videoB, 0, 0, canvasB.width, canvasB.height);
+          drawOverlayB();
+          ctxB.restore();
+        }
+      }
+      requestAnimationFrame(renderLoop);
+    }
+    requestAnimationFrame(renderLoop);
+
+    // Continuous Asynchronous Tracking Loop
+    let isTrackingBusy = false;
+    async function runTrackingLoop() {
+      if (!isRunning) return;
+      if (!isTrackingBusy) {
+        isTrackingBusy = true;
+        try {
+          if (videoA && videoA.readyState >= 2 && videoA.videoWidth > 0) {
+            currentTrackingTarget = 'A';
+            await hands.send({ image: videoA });
+          }
+          if ((currentMode === "DUAL_CAM" || currentMode === "TRI_VIEW") && videoB && videoB.readyState >= 2 && videoB.videoWidth > 0) {
+            currentTrackingTarget = 'B';
+            await hands.send({ image: videoB });
+          }
+        } catch (err) {
+          console.warn("Tracking note:", err);
+        } finally {
+          isTrackingBusy = false;
+        }
+      }
+      if (isRunning) {
+        requestAnimationFrame(runTrackingLoop);
+      }
+    }
 
     async function populateCameras() {
       try {
@@ -1372,10 +1415,6 @@
     }
 
     async function startCameraB() {
-      if (cameraInstanceB) {
-        try { cameraInstanceB.stop(); } catch (e) {}
-        cameraInstanceB = null;
-      }
       if (videoB.srcObject) {
         try { videoB.srcObject.getTracks().forEach(t => t.stop()); } catch (e) {}
         videoB.srcObject = null;
@@ -1387,85 +1426,62 @@
       try {
         let streamB = null;
 
-        // If same camera chosen or only 1 device attached, clone stream A for dual-cam preview & tracking!
-        if (devB && devA && devB === devA && videoA.srcObject) {
-          streamB = videoA.srcObject.clone();
-        } else if (devB) {
+        // If 2 physical cameras selected:
+        if (devB && devA && devB !== devA) {
           try {
             streamB = await navigator.mediaDevices.getUserMedia({
-              video: { deviceId: { exact: devB }, width: 1280, height: 720 }
+              video: { deviceId: { ideal: devB }, width: { ideal: 1280 }, height: { ideal: 720 } }
             });
           } catch (errDev) {
-            console.warn("Camera B direct access notice, cloning stream A:", errDev);
-            if (videoA.srcObject) streamB = videoA.srcObject.clone();
+            console.warn("Direct access to Cam 2 failed, falling back to clone:", errDev);
           }
-        } else if (videoA.srcObject) {
+        }
+
+        // If only 1 webcam is plugged in or direct request failed: clone stream A for testing
+        if (!streamB && videoA && videoA.srcObject) {
           streamB = videoA.srcObject.clone();
         }
 
         if (!streamB) return;
         videoB.srcObject = streamB;
         await videoB.play();
-
-        cameraInstanceB = new Camera(videoB, {
-          onFrame: async () => {
-            if (videoB.videoWidth && isRunning && (currentMode === "DUAL_CAM" || currentMode === "TRI_VIEW")) {
-              await handsB.send({ image: videoB });
-            }
-          },
-          width: 1280,
-          height: 720
-        });
-        await cameraInstanceB.start();
       } catch (e) {
-        console.warn("Camera B start note:", e.message);
+        console.warn("Camera B start notice:", e.message);
       }
     }
 
     async function startSystem() {
-      if (cameraInstanceA) cameraInstanceA.stop();
-      if (cameraInstanceB) cameraInstanceB.stop();
+      stopSystem();
 
       const devA = cameraSelectA.value || null;
       try {
-        const streamA = await navigator.mediaDevices.getUserMedia({
-          video: devA ? { deviceId: { exact: devA } } : { width: 1280, height: 720 }
-        });
+        const constraintsA = devA ? 
+          { video: { deviceId: { ideal: devA }, width: { ideal: 1280 }, height: { ideal: 720 } } } : 
+          { video: { width: { ideal: 1280 }, height: { ideal: 720 } } };
+
+        const streamA = await navigator.mediaDevices.getUserMedia(constraintsA);
         videoA.srcObject = streamA;
         await videoA.play();
 
-        cameraInstanceA = new Camera(videoA, {
-          onFrame: async () => {
-            if (videoA.videoWidth && isRunning) {
-              await handsA.send({ image: videoA });
-            }
-          },
-          width: 1280,
-          height: 720
-        });
-        await cameraInstanceA.start();
+        isRunning = true;
+        toggleCamBtn.innerText = "Stop System";
+        toggleCamBtn.style.background = "#ef4444";
 
         if (currentMode === "DUAL_CAM" || currentMode === "TRI_VIEW") {
           await startCameraB();
         }
 
-        isRunning = true;
-        toggleCamBtn.innerText = "Stop System";
-        toggleCamBtn.style.background = "#ef4444";
+        // Refresh camera dropdowns with actual labels now that permission is active
+        await populateCameras();
+
+        // Start tracking loop
+        runTrackingLoop();
       } catch (err) {
-        alert("Camera error: " + err.message);
+        alert("Camera access error: " + err.message);
       }
     }
 
     function stopSystem() {
-      if (cameraInstanceA) {
-        try { cameraInstanceA.stop(); } catch(e){}
-        cameraInstanceA = null;
-      }
-      if (cameraInstanceB) {
-        try { cameraInstanceB.stop(); } catch(e){}
-        cameraInstanceB = null;
-      }
       if (videoA.srcObject) {
         videoA.srcObject.getTracks().forEach(t => t.stop());
         videoA.srcObject = null;
@@ -1474,12 +1490,16 @@
         videoB.srcObject.getTracks().forEach(t => t.stop());
         videoB.srcObject = null;
       }
+      latestLandmarksA = null;
+      latestLandmarksB = null;
       hasHandA = false;
       hasHandB = false;
       update3DHand(null);
       isRunning = false;
       toggleCamBtn.innerText = "Start Live Stream";
       toggleCamBtn.style.background = "";
+      drawPlaceholder(ctxA, canvasA, "Camera Standby", "Click 'Start Live Stream' above to begin");
+      drawPlaceholder(ctxB, canvasB, "Camera 2 Standby", "Lateral Side View ready");
     }
 
     toggleCamBtn.addEventListener('click', () => {
@@ -1487,12 +1507,17 @@
       else startSystem();
     });
 
-    cameraSelectA.addEventListener('change', () => { if (isRunning) { stopSystem(); startSystem(); } });
+    cameraSelectA.addEventListener('change', () => { if (isRunning) { startSystem(); } });
     cameraSelectB.addEventListener('change', () => {
       if (isRunning && (currentMode === "DUAL_CAM" || currentMode === "TRI_VIEW")) {
         startCameraB();
       }
     });
+
+    // Initial Standby Placeholders
+    drawPlaceholder(ctxA, canvasA, "Camera Standby", "Click 'Start Live Stream' above to begin");
+    drawPlaceholder(ctxB, canvasB, "Camera 2 Standby", "Lateral Side View ready");
+    populateCameras();
 
     resetSessionBtn.addEventListener('click', () => {
       maxFlexionSeen = 0;
