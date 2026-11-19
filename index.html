@@ -1457,8 +1457,13 @@
     async function startSystem() {
       stopSystem();
 
+      // Camera API requires HTTPS or localhost
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("⚠️ Camera not available!\n\nPlease open this page using:\nhttp://localhost:8080\n\n(Camera API requires localhost or HTTPS)");
+        return;
+      }
+
       try {
-        // First get camera permission with simple constraints
         const streamA = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 1280 }, height: { ideal: 720 } }
         });
@@ -1674,9 +1679,13 @@
 
     // Initialize immediately (script is at end of body, DOM is ready)
     initThreeJS();
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(() => populateCameras())
-      .catch(() => populateCameras());
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then((stream) => { stream.getTracks().forEach(t => t.stop()); populateCameras(); })
+        .catch(() => populateCameras());
+    } else {
+      console.warn("Camera API not available. Use http://localhost:8080");
+    }
 
   </script>
 </body>
