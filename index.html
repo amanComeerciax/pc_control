@@ -616,7 +616,7 @@
           <canvas class="stream-canvas" id="cameraCanvasB" width="1280" height="720"></canvas>
           <div class="pane-badge" style="color:var(--accent-green);">
             <span class="pulse-dot" style="background:var(--accent-green);"></span>
-            CAM 2: LATERAL SIDE VIEW (NO OCCLUSION)
+            CAM 2: LATERAL VIEW (AI TRACKED)
           </div>
         </div>
 
@@ -806,11 +806,14 @@
     const exportBtn = document.getElementById('exportBtn');
 
     let cameraInstanceA = null;
+    let cameraInstanceB = null;
     let isRunning = false;
     let maxFlexionSeen = 0;
     let reps = 0;
     let isCurrentlyFlexed = false;
     let viewHistory = [];
+    let hasHandA = false;
+    let hasHandB = false;
 
     // Filter registry for each joint
     const angleFilters = {};
@@ -883,6 +886,10 @@
         paneCamB.style.display = 'none';
         pane3D.style.display = 'flex';
         cameraSelectB.style.display = 'none';
+        if (cameraInstanceB) {
+          try { cameraInstanceB.stop(); } catch(e){}
+          cameraInstanceB = null;
+        }
       } else if (mode === "DUAL_CAM") {
         btnModeDualCam.classList.add('active');
         viewportsGrid.classList.add('mode-dual-cam');
@@ -900,7 +907,7 @@
       }
 
       setTimeout(onWindowResize, 50);
-      if (isRunning && (mode === "DUAL_CAM" || mode === "TRI_VIEW")) {
+      if (isRunning && (mode === "DUAL_CAM" || mode === "TRI_VIEW") && !cameraInstanceB) {
         startCameraB();
       }
     }
@@ -1115,42 +1122,143 @@
       calibrationText.innerText = "Hold hand flat & relaxed... Calibrating 0° (3s)";
     });
 
-    const hands = new Hands({
+    // MediaPipe Hand Detectors: Dedicated instances for Cam 1 (Top) & Cam 2 (Lateral)
+    const handsA = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
-
-    hands.setOptions({
+    handsA.setOptions({
       maxNumHands: 1,
       modelComplexity: 1,
       minDetectionConfidence: 0.65,
       minTrackingConfidence: 0.65
     });
 
-    hands.onResults((results) => {
+    const handsB = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+    handsB.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.55,
+      minTrackingConfidence: 0.55
+    });
+
+    // Helper: Draw Circular Joint Marker on specified Canvas Context
+    function drawMarker(ctx, canvas, pt, color) {
+      if (!pt) return;
+      const x = pt.x * canvas.width;
+      const y = pt.y * canvas.height;
+      ctx.beginPath();
+      ctx.arc(x, y, 7, 0, 2 * Math.PI);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#ffffff";
+      ctx.stroke();
+    }
+
+    // Biometrics & Angle Calculation Engine (Shared across cameras)
+    function processBiometrics(landmarks) {
+      const now = performance.now();
+      let currentMaxPip = 0;
+      const currentFrameRaw = {};
+
+      for (const f of FINGERS) {
+        const rawMcp = calculateClinicalFlexion(landmarks[f.mcp[0]], landmarks[f.mcp[1]], landmarks[f.mcp[2]]);
+        const rawPip = calculateClinicalFlexion(landmarks[f.pip[0]], landmarks[f.pip[1]], landmarks[f.pip[2]]);
+        const rawDip = f.dip ? calculateClinicalFlexion(landmarks[f.dip[0]], landmarks[f.dip[1]], landmarks[f.dip[2]]) : 0;
+
+        currentFrameRaw[`${f.name}_mcp`] = rawMcp;
+        currentFrameRaw[`${f.name}_pip`] = rawPip;
+        if (f.dip) currentFrameRaw[`${f.name}_dip`] = rawDip;
+
+        // One-Euro Adaptive Filter to eliminate micro-jitter
+        const smoothMcp = angleFilters[`${f.name}_mcp`].filter(rawMcp, now);
+        const smoothPip = angleFilters[`${f.name}_pip`].filter(rawPip, now);
+        const smoothDip = f.dip ? angleFilters[`${f.name}_dip`].filter(rawDip, now) : 0;
+
+        // Apply Patient 0° Calibration Offset
+        const offsetMcp = calibrationOffsets[`${f.name}_mcp`] || 0;
+        const offsetPip = calibrationOffsets[`${f.name}_pip`] || 0;
+        const offsetDip = calibrationOffsets[`${f.name}_dip`] || 0;
+
+        const finalMcp = Math.round(Math.max(0, smoothMcp - offsetMcp));
+        const finalPip = Math.round(Math.max(0, smoothPip - offsetPip));
+        const finalDip = f.dip ? Math.round(Math.max(0, smoothDip - offsetDip)) : null;
+
+        if (finalPip > currentMaxPip) currentMaxPip = finalPip;
+
+        const mcpEl = document.getElementById(`${f.name}-mcp`);
+        const pipEl = document.getElementById(`${f.name}-pip`);
+        const dipEl = document.getElementById(`${f.name}-dip`);
+        const barEl = document.getElementById(`${f.name}-bar`);
+        const totalEl = document.getElementById(`${f.name}-total`);
+
+        if (mcpEl) mcpEl.innerText = `${finalMcp}°`;
+        if (pipEl) pipEl.innerText = `${finalPip}°`;
+        if (dipEl && f.dip) dipEl.innerText = `${finalDip}°`;
+
+        const pct = Math.max(0, Math.min(100, (finalPip / 90) * 100));
+        if (barEl) {
+          barEl.style.width = `${pct}%`;
+          barEl.style.background = getFlexionColor(finalPip);
+        }
+        if (totalEl) {
+          totalEl.innerText = `${finalPip}°`;
+          totalEl.style.color = getFlexionColor(finalPip);
+        }
+      }
+
+      // Calibration Gathering Routine
+      if (isCalibrating) {
+        calibrationSamples.push(currentFrameRaw);
+        const remaining = Math.max(0, 3 - Math.floor(calibrationSamples.length / 20));
+        calibrationText.innerText = `Hold hand relaxed... Calibrating 0° (${remaining}s)`;
+
+        if (calibrationSamples.length >= 60) {
+          calibrationOffsets = {};
+          for (const key in currentFrameRaw) {
+            const sum = calibrationSamples.reduce((acc, curr) => acc + (curr[key] || 0), 0);
+            calibrationOffsets[key] = sum / calibrationSamples.length;
+          }
+          isCalibrating = false;
+          calibrationBanner.classList.remove('active');
+          calibrationNote.innerText = "0° Baseline Calibrated ✅";
+          calibrationNote.style.color = "var(--accent-green)";
+        }
+      }
+
+      if (currentMaxPip > maxFlexionSeen) {
+        maxFlexionSeen = currentMaxPip;
+        peakFlexion.innerText = `${maxFlexionSeen}°`;
+        const score = Math.round(Math.min(100, (maxFlexionSeen / 85) * 100));
+        recoveryScore.innerText = `${score}%`;
+      }
+
+      if (currentMaxPip >= 55 && !isCurrentlyFlexed) {
+        isCurrentlyFlexed = true;
+        reps++;
+        repCount.innerText = reps;
+      } else if (currentMaxPip <= 20 && isCurrentlyFlexed) {
+        isCurrentlyFlexed = false;
+      }
+    }
+
+    // Camera 1 (Top Dorsal View) Callback
+    handsA.onResults((results) => {
       ctxA.save();
       ctxA.clearRect(0, 0, canvasA.width, canvasA.height);
       ctxA.drawImage(results.image, 0, 0, canvasA.width, canvasA.height);
 
-      if ((currentMode === "DUAL_CAM" || currentMode === "TRI_VIEW") && videoB.videoWidth) {
-        ctxB.save();
-        ctxB.clearRect(0, 0, canvasB.width, canvasB.height);
-        ctxB.drawImage(videoB, 0, 0, canvasB.width, canvasB.height);
-        ctxB.strokeStyle = "rgba(16, 185, 129, 0.3)";
-        ctxB.lineWidth = 1;
-        ctxB.beginPath();
-        ctxB.moveTo(canvasB.width / 2, 0); ctxB.lineTo(canvasB.width / 2, canvasB.height);
-        ctxB.moveTo(0, canvasB.height / 2); ctxB.lineTo(canvasB.width, canvasB.height / 2);
-        ctxB.stroke();
-        ctxB.restore();
-      }
-
       if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        hasHandA = true;
         const landmarks = results.multiHandLandmarks[0];
 
-        // 3D Digital Twin update
+        // 3D Digital Twin update & Biometrics
         update3DHand(landmarks);
+        processBiometrics(landmarks);
 
-        // Orientation
+        // Perspective view detection
         const view = detectView(landmarks);
         if (view === "LATERAL") {
           viewBadge.className = "badge-view lateral";
@@ -1160,87 +1268,9 @@
           viewText.innerText = "Front (Palmar View)";
         }
 
-        const now = performance.now();
-        let currentMaxPip = 0;
-        const currentFrameRaw = {};
-
-        for (const f of FINGERS) {
-          const rawMcp = calculateClinicalFlexion(landmarks[f.mcp[0]], landmarks[f.mcp[1]], landmarks[f.mcp[2]]);
-          const rawPip = calculateClinicalFlexion(landmarks[f.pip[0]], landmarks[f.pip[1]], landmarks[f.pip[2]]);
-          const rawDip = f.dip ? calculateClinicalFlexion(landmarks[f.dip[0]], landmarks[f.dip[1]], landmarks[f.dip[2]]) : 0;
-
-          currentFrameRaw[`${f.name}_mcp`] = rawMcp;
-          currentFrameRaw[`${f.name}_pip`] = rawPip;
-          if (f.dip) currentFrameRaw[`${f.name}_dip`] = rawDip;
-
-          // Apply One-Euro Adaptive Filter to remove micro-jitter
-          const smoothMcp = angleFilters[`${f.name}_mcp`].filter(rawMcp, now);
-          const smoothPip = angleFilters[`${f.name}_pip`].filter(rawPip, now);
-          const smoothDip = f.dip ? angleFilters[`${f.name}_dip`].filter(rawDip, now) : 0;
-
-          // Apply Patient 0° Calibration Offset if available
-          const offsetMcp = calibrationOffsets[`${f.name}_mcp`] || 0;
-          const offsetPip = calibrationOffsets[`${f.name}_pip`] || 0;
-          const offsetDip = calibrationOffsets[`${f.name}_dip`] || 0;
-
-          const finalMcp = Math.round(Math.max(0, smoothMcp - offsetMcp));
-          const finalPip = Math.round(Math.max(0, smoothPip - offsetPip));
-          const finalDip = f.dip ? Math.round(Math.max(0, smoothDip - offsetDip)) : null;
-
-          if (finalPip > currentMaxPip) currentMaxPip = finalPip;
-
-          document.getElementById(`${f.name}-mcp`).innerText = `${finalMcp}°`;
-          document.getElementById(`${f.name}-pip`).innerText = `${finalPip}°`;
-          if (f.dip) document.getElementById(`${f.name}-dip`).innerText = `${finalDip}°`;
-
-          const pct = Math.max(0, Math.min(100, (finalPip / 90) * 100));
-          const barEl = document.getElementById(`${f.name}-bar`);
-          barEl.style.width = `${pct}%`;
-          barEl.style.background = getFlexionColor(finalPip);
-
-          const totalEl = document.getElementById(`${f.name}-total`);
-          totalEl.innerText = `${finalPip}°`;
-          totalEl.style.color = getFlexionColor(finalPip);
-        }
-
-        // Calibration Gathering Routine
-        if (isCalibrating) {
-          calibrationSamples.push(currentFrameRaw);
-          const remaining = Math.max(0, 3 - Math.floor(calibrationSamples.length / 20));
-          calibrationText.innerText = `Hold hand relaxed... Calibrating 0° (${remaining}s)`;
-
-          if (calibrationSamples.length >= 60) {
-            // Compute average resting angle offset for each joint
-            calibrationOffsets = {};
-            for (const key in currentFrameRaw) {
-              const sum = calibrationSamples.reduce((acc, curr) => acc + (curr[key] || 0), 0);
-              calibrationOffsets[key] = sum / calibrationSamples.length;
-            }
-            isCalibrating = false;
-            calibrationBanner.classList.remove('active');
-            calibrationNote.innerText = "0° Baseline Calibrated ✅";
-            calibrationNote.style.color = "var(--accent-green)";
-          }
-        }
-
-        if (currentMaxPip > maxFlexionSeen) {
-          maxFlexionSeen = currentMaxPip;
-          peakFlexion.innerText = `${maxFlexionSeen}°`;
-          const score = Math.round(Math.min(100, (maxFlexionSeen / 85) * 100));
-          recoveryScore.innerText = `${score}%`;
-        }
-
-        if (currentMaxPip >= 55 && !isCurrentlyFlexed) {
-          isCurrentlyFlexed = true;
-          reps++;
-          repCount.innerText = reps;
-        } else if (currentMaxPip <= 20 && isCurrentlyFlexed) {
-          isCurrentlyFlexed = false;
-        }
-
-        // 2D Skeleton Lines on Camera A
+        // 2D Skeleton Lines on Camera A (Cyan Neon)
         ctxA.lineWidth = 3;
-        ctxA.strokeStyle = "rgba(6, 182, 212, 0.75)";
+        ctxA.strokeStyle = "rgba(6, 182, 212, 0.85)";
         for (const [start, end] of CONNECTIONS) {
           ctxA.beginPath();
           ctxA.moveTo(landmarks[start].x * canvasA.width, landmarks[start].y * canvasA.height);
@@ -1248,30 +1278,70 @@
           ctxA.stroke();
         }
 
-        // 2D Joint Markers on Camera A
+        // 2D Joint Markers on Camera A (Knuckle MCP, PIP, DIP)
         for (const f of FINGERS) {
-          drawMarker(ctxA, landmarks[f.mcp[1]], "#ef4444"); // Red MCP
-          drawMarker(ctxA, landmarks[f.pip[1]], "#10b981"); // Green PIP
-          if (f.dip) drawMarker(ctxA, landmarks[f.dip[1]], "#06b6d4"); // Blue DIP
+          drawMarker(ctxA, canvasA, landmarks[f.mcp[1]], "#ef4444"); // Red MCP
+          drawMarker(ctxA, canvasA, landmarks[f.pip[1]], "#10b981"); // Green PIP
+          if (f.dip) drawMarker(ctxA, canvasA, landmarks[f.dip[1]], "#06b6d4"); // Blue DIP
         }
-
       } else {
-        update3DHand(null);
+        hasHandA = false;
+        if (!hasHandB) {
+          update3DHand(null);
+        }
       }
       ctxA.restore();
     });
 
-    function drawMarker(ctx, pt, color) {
-      const x = pt.x * canvasA.width;
-      const y = pt.y * canvasA.height;
-      ctx.beginPath();
-      ctx.arc(x, y, 7, 0, 2 * Math.PI);
-      ctx.fillStyle = color;
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = "#ffffff";
-      ctx.stroke();
-    }
+    // Camera 2 (Lateral Side View) Callback with Full Hand AI Tracking
+    handsB.onResults((resultsB) => {
+      ctxB.save();
+      ctxB.clearRect(0, 0, canvasB.width, canvasB.height);
+      ctxB.drawImage(resultsB.image, 0, 0, canvasB.width, canvasB.height);
+
+      if (resultsB.multiHandLandmarks && resultsB.multiHandLandmarks.length > 0) {
+        hasHandB = true;
+        const landmarksB = resultsB.multiHandLandmarks[0];
+
+        // 2D Skeleton Lines on Camera B (Emerald Neon)
+        ctxB.lineWidth = 3;
+        ctxB.strokeStyle = "rgba(16, 185, 129, 0.9)";
+        for (const [start, end] of CONNECTIONS) {
+          ctxB.beginPath();
+          ctxB.moveTo(landmarksB[start].x * canvasB.width, landmarksB[start].y * canvasB.height);
+          ctxB.lineTo(landmarksB[end].x * canvasB.width, landmarksB[end].y * canvasB.height);
+          ctxB.stroke();
+        }
+
+        // 2D Joint Markers on Camera B
+        for (const f of FINGERS) {
+          drawMarker(ctxB, canvasB, landmarksB[f.mcp[1]], "#ef4444"); // Red MCP
+          drawMarker(ctxB, canvasB, landmarksB[f.pip[1]], "#10b981"); // Green PIP
+          if (f.dip) drawMarker(ctxB, canvasB, landmarksB[f.dip[1]], "#06b6d4"); // Blue DIP
+        }
+
+        // Active tracking indicator
+        ctxB.fillStyle = "rgba(16, 185, 129, 0.85)";
+        ctxB.font = "bold 13px 'Plus Jakarta Sans'";
+        ctxB.fillText("CAM 2: HAND TRACKED", 16, 28);
+
+        // Failover: If Camera A view is blocked/occluded, Camera B drives the 3D Twin & Metrics
+        if (!hasHandA) {
+          update3DHand(landmarksB);
+          processBiometrics(landmarksB);
+        }
+      } else {
+        hasHandB = false;
+        // Subtle scanning crosshair
+        ctxB.strokeStyle = "rgba(16, 185, 129, 0.2)";
+        ctxB.lineWidth = 1;
+        ctxB.beginPath();
+        ctxB.moveTo(canvasB.width / 2, 0); ctxB.lineTo(canvasB.width / 2, canvasB.height);
+        ctxB.moveTo(0, canvasB.height / 2); ctxB.lineTo(canvasB.width, canvasB.height / 2);
+        ctxB.stroke();
+      }
+      ctxB.restore();
+    });
 
     async function populateCameras() {
       try {
@@ -1302,14 +1372,51 @@
     }
 
     async function startCameraB() {
+      if (cameraInstanceB) {
+        try { cameraInstanceB.stop(); } catch (e) {}
+        cameraInstanceB = null;
+      }
+      if (videoB.srcObject) {
+        try { videoB.srcObject.getTracks().forEach(t => t.stop()); } catch (e) {}
+        videoB.srcObject = null;
+      }
+
+      const devA = cameraSelectA.value || null;
       const devB = cameraSelectB.value || null;
-      if (!devB) return;
+
       try {
-        const streamB = await navigator.mediaDevices.getUserMedia({
-          video: { deviceId: { exact: devB } }
-        });
+        let streamB = null;
+
+        // If same camera chosen or only 1 device attached, clone stream A for dual-cam preview & tracking!
+        if (devB && devA && devB === devA && videoA.srcObject) {
+          streamB = videoA.srcObject.clone();
+        } else if (devB) {
+          try {
+            streamB = await navigator.mediaDevices.getUserMedia({
+              video: { deviceId: { exact: devB }, width: 1280, height: 720 }
+            });
+          } catch (errDev) {
+            console.warn("Camera B direct access notice, cloning stream A:", errDev);
+            if (videoA.srcObject) streamB = videoA.srcObject.clone();
+          }
+        } else if (videoA.srcObject) {
+          streamB = videoA.srcObject.clone();
+        }
+
+        if (!streamB) return;
         videoB.srcObject = streamB;
         await videoB.play();
+
+        cameraInstanceB = new Camera(videoB, {
+          onFrame: async () => {
+            if (videoB.videoWidth && isRunning && (currentMode === "DUAL_CAM" || currentMode === "TRI_VIEW")) {
+              await handsB.send({ image: videoB });
+            }
+          },
+          width: 1280,
+          height: 720
+        });
+        await cameraInstanceB.start();
       } catch (e) {
         console.warn("Camera B start note:", e.message);
       }
@@ -1317,6 +1424,7 @@
 
     async function startSystem() {
       if (cameraInstanceA) cameraInstanceA.stop();
+      if (cameraInstanceB) cameraInstanceB.stop();
 
       const devA = cameraSelectA.value || null;
       try {
@@ -1328,7 +1436,9 @@
 
         cameraInstanceA = new Camera(videoA, {
           onFrame: async () => {
-            await hands.send({ image: videoA });
+            if (videoA.videoWidth && isRunning) {
+              await handsA.send({ image: videoA });
+            }
           },
           width: 1280,
           height: 720
@@ -1348,9 +1458,24 @@
     }
 
     function stopSystem() {
-      if (cameraInstanceA) cameraInstanceA.stop();
-      if (videoA.srcObject) videoA.srcObject.getTracks().forEach(t => t.stop());
-      if (videoB.srcObject) videoB.srcObject.getTracks().forEach(t => t.stop());
+      if (cameraInstanceA) {
+        try { cameraInstanceA.stop(); } catch(e){}
+        cameraInstanceA = null;
+      }
+      if (cameraInstanceB) {
+        try { cameraInstanceB.stop(); } catch(e){}
+        cameraInstanceB = null;
+      }
+      if (videoA.srcObject) {
+        videoA.srcObject.getTracks().forEach(t => t.stop());
+        videoA.srcObject = null;
+      }
+      if (videoB.srcObject) {
+        videoB.srcObject.getTracks().forEach(t => t.stop());
+        videoB.srcObject = null;
+      }
+      hasHandA = false;
+      hasHandB = false;
       update3DHand(null);
       isRunning = false;
       toggleCamBtn.innerText = "Start Live Stream";
@@ -1363,7 +1488,11 @@
     });
 
     cameraSelectA.addEventListener('change', () => { if (isRunning) { stopSystem(); startSystem(); } });
-    cameraSelectB.addEventListener('change', () => { if (isRunning) startCameraB(); });
+    cameraSelectB.addEventListener('change', () => {
+      if (isRunning && (currentMode === "DUAL_CAM" || currentMode === "TRI_VIEW")) {
+        startCameraB();
+      }
+    });
 
     resetSessionBtn.addEventListener('click', () => {
       maxFlexionSeen = 0;
