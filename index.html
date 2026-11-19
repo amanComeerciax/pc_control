@@ -289,7 +289,11 @@
     }
 
     video {
-      display: none;
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      width: 1px;
+      height: 1px;
     }
 
     canvas.stream-canvas {
@@ -1453,15 +1457,23 @@
     async function startSystem() {
       stopSystem();
 
-      const devA = cameraSelectA.value || null;
       try {
-        const constraintsA = devA ? 
-          { video: { deviceId: { ideal: devA }, width: { ideal: 1280 }, height: { ideal: 720 } } } : 
-          { video: { width: { ideal: 1280 }, height: { ideal: 720 } } };
-
-        const streamA = await navigator.mediaDevices.getUserMedia(constraintsA);
+        // First get camera permission with simple constraints
+        const streamA = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
         videoA.srcObject = streamA;
+        videoA.muted = true;
+        videoA.playsInline = true;
         await videoA.play();
+
+        // Wait for video to actually start producing frames
+        await new Promise((resolve) => {
+          if (videoA.readyState >= 2) return resolve();
+          videoA.addEventListener('loadeddata', resolve, { once: true });
+        });
+
+        console.log("Camera A started:", videoA.videoWidth, "x", videoA.videoHeight);
 
         isRunning = true;
         toggleCamBtn.innerText = "Stop System";
@@ -1471,13 +1483,14 @@
           await startCameraB();
         }
 
-        // Refresh camera dropdowns with actual labels now that permission is active
+        // Refresh camera labels (now permission is granted)
         await populateCameras();
 
-        // Start tracking loop
+        // Start AI tracking loop
         runTrackingLoop();
       } catch (err) {
-        alert("Camera access error: " + err.message);
+        console.error("Camera start error:", err);
+        alert("Camera access error: " + err.message + "\n\nPlease allow camera access and reload the page.");
       }
     }
 
@@ -1659,12 +1672,11 @@
       doc.save(`NeuroRehab_Clinical_Report_${Date.now()}.pdf`);
     });
 
-    window.addEventListener('DOMContentLoaded', () => {
-      initThreeJS();
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(() => populateCameras())
-        .catch(() => populateCameras());
-    });
+    // Initialize immediately (script is at end of body, DOM is ready)
+    initThreeJS();
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(() => populateCameras())
+      .catch(() => populateCameras());
 
   </script>
 </body>
